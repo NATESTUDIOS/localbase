@@ -5,26 +5,7 @@
     { "src": "public/**", "use": "@vercel/static" }
   ],
   "routes": [
-    {
-      "src": "^/api/auth$",
-      "dest": "/api/auth.js",
-      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    },
-    {
-      "src": "^/api/analytics$",
-      "dest": "/api/analytics.js",
-      "methods": ["GET", "POST", "DELETE", "OPTIONS"]
-    },
-    {
-      "src": "^/api/projects$",
-      "dest": "/api/projects.js",
-      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    },
-    {
-      "src": "^/api/host$",
-      "dest": "/api/host.js",
-      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    },
+  
     {
       "src": "^/host/([^/]+)/([^/]+)/([^/]+)$",
       "dest": "/api/host?user_id=$1&key=$2&filename=$3",
