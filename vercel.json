@@ -21,14 +21,29 @@
       "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     },
     {
-    "src": "^/portfolio/([^/]+)/([^/]+)$",
-    "dest": "/api/projects.js?user_tag=$1&project_slug=$2",
-    "methods": ["GET"]
-   },
-   {
-    "src": "^/portfolio/([^/]+)$",
-    "dest": "/api/auth.js?user_tag=$1",
-    "methods": ["GET"]
+      "src": "^/api/host$",
+      "dest": "/api/host.js",
+      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    },
+    {
+      "src": "^/host/([^/]+)/([^/]+)/([^/]+)$",
+      "dest": "/api/host?user_id=$1&key=$2&filename=$3",
+      "methods": ["GET"]
+    },
+    {
+      "src": "^/host/([^/]+)/([^/]+)$",
+      "dest": "/api/host?user_id=$1&key=$2",
+      "methods": ["GET"]
+    },
+    {
+      "src": "^/portfolio/([^/]+)/([^/]+)$",
+      "dest": "/api/projects.js?user_tag=$1&project_slug=$2",
+      "methods": ["GET"]
+    },
+    {
+      "src": "^/portfolio/([^/]+)$",
+      "dest": "/api/auth.js?user_tag=$1",
+      "methods": ["GET"]
     },
     {
       "src": "^/$",
@@ -45,7 +60,7 @@
     {
       "src": "^/(.*)$",
       "dest": "/public/$1"
-}
+    }
   ],
   "headers": [
     {
