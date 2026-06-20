@@ -2,456 +2,550 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  
-  <!-- Primary Meta Tags -->
-  <title>Exploits — Portfolio Hub for Developers & Designers | Host HTML Projects, Track Analytics</title>
-  <meta name="title" content="Exploits — Portfolio Hub for Developers & Designers">
-  <meta name="description" content="Build, host, and dominate your creative identity. The all-in-one portfolio suite for developers and designers. Host HTML projects, track analytics, and craft stunning profiles with zero lock-in.">
-  <meta name="keywords" content="portfolio, developer portfolio, designer portfolio, HTML hosting, project analytics, creative portfolio, web developer, freelance portfolio, code portfolio, design portfolio">
-  <meta name="author" content="Exploits">
-  <meta name="robots" content="index, follow">
-  <meta name="language" content="English">
-  <meta name="revisit-after" content="7 days">
-  
-  <!-- Canonical URL -->
-  <link rel="canonical" href="https://myexploits.vercel.app/">
-  
-  <!-- Open Graph / Facebook -->
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://myexploits.vercel.app/">
-  <meta property="og:title" content="Exploits — Portfolio Hub for Developers & Designers">
-  <meta property="og:description" content="Build, host, and dominate your creative identity. Host HTML projects, track analytics, and craft stunning portfolios with zero lock-in.">
-  <meta property="og:image" content="https://myexploits.vercel.app/og-image.png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:site_name" content="Exploits">
-  
-  <!-- Twitter -->
-  <meta property="twitter:card" content="summary_large_image">
-  <meta property="twitter:url" content="https://myexploits.vercel.app/">
-  <meta property="twitter:title" content="Exploits — Portfolio Hub for Developers & Designers">
-  <meta property="twitter:description" content="Build, host, and dominate your creative identity. Host HTML projects, track analytics, and craft stunning portfolios with zero lock-in.">
-  <meta property="twitter:image" content="https://myexploits.vercel.app/twitter-image.png">
-  
-  <!-- Additional Meta Tags -->
-  <meta name="application-name" content="Exploits">
-  <meta name="apple-mobile-web-app-title" content="Exploits">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#3B82F6">
-  
-  <!-- Favicon and Icons -->
-  <link rel="icon" type="image/x-icon" href="/favicon.ico">
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  
-  <!-- Schema.org markup for Google+ -->
-  <meta itemprop="name" content="Exploits — Portfolio Hub for Developers & Designers">
-  <meta itemprop="description" content="Build, host, and dominate your creative identity. The all-in-one portfolio suite for developers and designers.">
-  <meta itemprop="image" content="https://myexploits.vercel.app/schema-image.png">
-  
-  <!-- Tailwind + Google Fonts + CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Localbase · elegant API platform</title>
+  <!-- Font & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800&display=swap');
-    * { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
-    body { background: #fefcf7; }
-    .glass-card {
-      background: rgba(255, 255, 255, 0.75);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,240,0.5);
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
-    .gradient-text {
-      background: linear-gradient(135deg, #0F172A 0%, #3B82F6 60%, #A855F7 100%);
+
+    body {
+      background: #faf9fc;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      color: #1e1b2b;
+      line-height: 1.5;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+
+    /* header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      margin-bottom: 3.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid rgba(0,0,0,0.04);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 700;
+      font-size: 1.9rem;
+      letter-spacing: -0.02em;
+      color: #1e1b2b;
+    }
+
+    .logo i {
+      background: #6d5cfe;
+      color: white;
+      padding: 0.4rem 0.6rem;
+      border-radius: 12px;
+      font-size: 1.4rem;
+      box-shadow: 0 8px 20px -6px rgba(109, 92, 254, 0.35);
+    }
+
+    .badge {
+      background: #eae7f9;
+      padding: 0.4rem 1rem;
+      border-radius: 60px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #4a3f7a;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .badge i {
+      font-size: 0.7rem;
+      color: #6d5cfe;
+    }
+
+    .tagline {
+      background: white;
+      padding: 0.5rem 1.8rem;
+      border-radius: 60px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+      font-weight: 500;
+      font-size: 0.95rem;
+      border: 1px solid #efecf5;
+    }
+
+    /* hero */
+    .hero {
+      background: white;
+      border-radius: 40px;
+      padding: 3.5rem 3rem;
+      margin-bottom: 4rem;
+      box-shadow: 0 20px 50px -12px rgba(0,0,0,0.06);
+      border: 1px solid #f0edf6;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .hero-content {
+      flex: 2 1 300px;
+    }
+
+    .hero-content h1 {
+      font-size: 2.8rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      margin-bottom: 1.2rem;
+    }
+
+    .hero-content h1 span {
+      background: linear-gradient(135deg, #6d5cfe, #a78bfa);
       -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
       background-clip: text;
-      color: transparent;
     }
-    .feature-hover {
-      transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+
+    .hero-content p {
+      font-size: 1.2rem;
+      color: #4d456b;
+      max-width: 500px;
+      margin-bottom: 2rem;
     }
-    .feature-hover:hover {
-      transform: translateY(-6px);
-      box-shadow: 0 20px 35px -12px rgba(0,0,0,0.1);
+
+    .hero-stats {
+      display: flex;
+      gap: 2.5rem;
+      flex-wrap: wrap;
     }
-    .mockup-window {
-      background: #0a0c10;
-      border-radius: 24px;
-      box-shadow: 0 25px 45px -12px rgba(0,0,0,0.35);
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
     }
-    @keyframes float-slow {
-      0% { transform: translateY(0px); }
-      100% { transform: translateY(-12px); }
+
+    .stat-item i {
+      color: #6d5cfe;
+      font-size: 1.3rem;
+      background: #f0edfc;
+      padding: 0.5rem;
+      border-radius: 14px;
     }
-    .float-element {
-      animation: float-slow 4s ease-in-out infinite alternate;
+
+    .stat-item div {
+      font-weight: 600;
     }
-    
-    /* JSON-LD Structured Data */
-    .structured-data {
-      display: none;
+
+    .stat-item small {
+      display: block;
+      font-weight: 400;
+      font-size: 0.8rem;
+      color: #6b6185;
+    }
+
+    .hero-illustration {
+      flex: 1 1 200px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .hero-illustration i {
+      font-size: 8rem;
+      color: #e2daf5;
+      background: #f6f3fe;
+      padding: 1.5rem;
+      border-radius: 60px;
+      box-shadow: 0 10px 30px -10px rgba(109, 92, 254, 0.1);
+    }
+
+    /* grid cards */
+    .section-title {
+      font-size: 1.8rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 1.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .section-title i {
+      color: #6d5cfe;
+      background: #eeebfc;
+      padding: 0.6rem;
+      border-radius: 16px;
+      font-size: 1.2rem;
+    }
+
+    .api-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+      margin-bottom: 4rem;
+    }
+
+    .api-card {
+      background: white;
+      padding: 1.8rem 1.8rem 2rem;
+      border-radius: 28px;
+      border: 1px solid #efeaf8;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.01);
+    }
+
+    .api-card:hover {
+      border-color: #cbbff5;
+      box-shadow: 0 12px 30px -12px rgba(109, 92, 254, 0.08);
+      transform: translateY(-3px);
+    }
+
+    .api-card .card-icon {
+      font-size: 2rem;
+      color: #6d5cfe;
+      margin-bottom: 1rem;
+      background: #f3effe;
+      width: 3.4rem;
+      height: 3.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 18px;
+    }
+
+    .api-card h3 {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .api-card p {
+      color: #554c73;
+      font-size: 0.95rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .endpoint-badge {
+      display: inline-block;
+      background: #f0edfc;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 0.7rem;
+      padding: 0.2rem 0.7rem;
+      border-radius: 40px;
+      color: #3f3570;
+      letter-spacing: 0.01em;
+    }
+
+    .method-tag {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.2rem 0.7rem;
+      border-radius: 30px;
+      background: #d9d0f5;
+      color: #2d2357;
+      margin-right: 0.3rem;
+    }
+
+    .card-footer {
+      margin-top: 1.2rem;
+      border-top: 1px solid #f2edf9;
+      padding-top: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #6b6185;
+      font-size: 0.8rem;
+    }
+
+    .card-footer i {
+      color: #6d5cfe;
+    }
+
+    /* code preview */
+    .code-preview {
+      background: #15111f;
+      border-radius: 28px;
+      padding: 2rem 2.2rem;
+      margin: 3rem 0 4rem;
+      color: #e2dbf0;
+      border: 1px solid #2f2843;
+      box-shadow: 0 20px 40px -16px rgba(0,0,0,0.25);
+    }
+
+    .code-preview .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.2rem;
+      font-size: 0.9rem;
+      color: #a195c9;
+    }
+
+    .code-preview .code-header i {
+      color: #a78bfa;
+    }
+
+    .code-preview pre {
+      font-family: 'Menlo', 'Monaco', monospace;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .code-preview .highlight {
+      color: #c4b5fd;
+    }
+
+    .code-preview .string {
+      color: #a7f3d0;
+    }
+
+    .code-preview .key {
+      color: #fcd34d;
+    }
+
+    /* footer */
+    .footer {
+      margin-top: 4rem;
+      text-align: center;
+      color: #675b84;
+      font-size: 0.9rem;
+      border-top: 1px solid #eae5f3;
+      padding-top: 2.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 2rem;
+    }
+
+    .footer-links a {
+      color: #4d456b;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .footer-links a:hover {
+      color: #6d5cfe;
+    }
+
+    @media (max-width: 700px) {
+      .hero {
+        padding: 2rem 1.5rem;
+      }
+      .hero-content h1 {
+        font-size: 2rem;
+      }
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .footer {
+        flex-direction: column;
+        gap: 1rem;
+      }
     }
   </style>
-  
-  <!-- JSON-LD Structured Data for SEO -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "Exploits",
-    "applicationCategory": "DeveloperApplication",
-    "operatingSystem": "Web",
-    "description": "Portfolio management platform for developers and designers to host HTML projects, track analytics, and create stunning portfolios.",
-    "url": "https://myexploits.vercel.app/",
-    "screenshot": "https://myexploits.vercel.app/og-image.png",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
-    "author": {
-      "@type": "Organization",
-      "name": "Exploits",
-      "url": "https://myexploits.vercel.app/"
-    },
-    "featureList": [
-      "Hosted HTML/CSS/JS Projects",
-      "Built-in Analytics",
-      "JWT Authentication",
-      "Public Portfolio Routes",
-      "Project Management",
-      "Privacy-First Tracking"
-    ]
-  }
-  </script>
 </head>
-<body class="antialiased">
+<body>
+<div class="container">
 
-  <!-- NAVBAR -->
-  <nav class="w-full fixed top-0 z-50 py-4 px-6 md:px-12 bg-white/70 backdrop-blur-xl border-b border-gray-200/50">
-    <div class="max-w-7xl mx-auto flex justify-between items-center">
-      <div class="flex items-center gap-2">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-md">
-          <span class="text-white font-black text-xl">⚡</span>
+  <!-- header -->
+  <header class="header">
+    <div class="logo">
+      <i class="fas fa-database"></i>
+      localbase
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
+      <span class="badge"><i class="fas fa-code"></i> v2.0 · API</span>
+      <span class="tagline"><i class="fas fa-cloud-upload-alt" style="color:#6d5cfe; margin-right: 0.3rem;"></i> Host · Notify · Auth</span>
+    </div>
+  </header>
+
+  <!-- hero -->
+  <section class="hero">
+    <div class="hero-content">
+      <h1>Everything your <span>backend</span> needs.</h1>
+      <p>Complete API for authentication, file hosting, notifications & analytics — built for modern apps.</p>
+      <div class="hero-stats">
+        <div class="stat-item">
+          <i class="fas fa-shield-alt"></i>
+          <div>Auth <small>12 endpoints</small></div>
         </div>
-        <span class="font-extrabold text-2xl tracking-tight text-gray-800">exploits<span class="text-blue-600">.</span></span>
-      </div>
-      <div class="hidden md:flex gap-8 text-gray-600 font-medium">
-        <a href="#features" class="hover:text-blue-600 transition">Features</a>
-        <a href="#demos" class="hover:text-blue-600 transition">Live demos</a>
-        <a href="#showcase" class="hover:text-blue-600 transition">Showcase</a>
-        <a href="/docs" class="hover:text-blue-600 transition">Docs</a>
-      </div>
-      <div class="flex gap-3">
-        <a href="/login" class="hidden md:block px-5 py-2 rounded-full text-gray-700 font-medium hover:bg-gray-100 transition">Sign in</a>
-        <a href="/login" class="px-5 py-2 rounded-full bg-gray-900 text-white font-semibold shadow-md hover:bg-gray-800 transition">Create account</a>
+        <div class="stat-item">
+          <i class="fas fa-folder-open"></i>
+          <div>Hosting <small>files + images</small></div>
+        </div>
+        <div class="stat-item">
+          <i class="fas fa-bell"></i>
+          <div>Notifications <small>real‑time</small></div>
+        </div>
       </div>
     </div>
-  </nav>
-
-  <!-- HERO SECTION -->
-  <section class="pt-32 pb-20 md:pt-40 md:pb-28 px-6 max-w-7xl mx-auto">
-    <div class="flex flex-col lg:flex-row items-center gap-14">
-      <div class="flex-1 text-center lg:text-left">
-        <div class="inline-flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full text-blue-700 text-sm font-medium mb-6">
-          <span class="relative flex h-2 w-2">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-600"></span>
-          </span>
-          portfolio ecosystem 2.0
-        </div>
-        <h1 class="text-5xl md:text-6xl lg:text-7xl font-black leading-[1.2] tracking-tight text-gray-900">
-          Build, host & <span class="gradient-text">dominate</span><br>your creative identity.
-        </h1>
-        <p class="text-xl text-gray-500 mt-6 max-w-xl mx-auto lg:mx-0">
-          The all‑in‑one portfolio suite for developers, designers, and makers. 
-          Host HTML projects, track analytics, and craft stunning profiles — no lock‑in.
-        </p>
-        <div class="flex flex-wrap justify-center lg:justify-start gap-4 mt-10">
-          <a href="/login" class="px-8 py-3 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-105">Get Started Free →</a>
-          <a href="#demos" class="px-8 py-3 rounded-full border border-gray-300 bg-white text-gray-800 font-medium hover:bg-gray-50 transition">View Live Demos</a>
-        </div>
-        <div class="flex flex-wrap gap-6 mt-12 text-sm text-gray-500 justify-center lg:justify-start">
-          <div class="flex items-center gap-2">✨ <span>Hosted HTML/CSS/JS</span></div>
-          <div class="flex items-center gap-2">📊 <span>Built‑in analytics</span></div>
-          <div class="flex items-center gap-2">🔗 <span>Redirect or custom code</span></div>
-        </div>
-      </div>
-      <div class="flex-1 relative">
-        <div class="mockup-window rounded-3xl overflow-hidden border border-white/20 shadow-2xl">
-          <div class="bg-[#0F1117] p-2 flex items-center gap-2 border-b border-gray-800">
-            <div class="w-3 h-3 rounded-full bg-red-500"></div>
-            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
-            <div class="w-3 h-3 rounded-full bg-green-500"></div>
-            <span class="text-gray-400 text-xs ml-2">portfolio preview — @dev_explorer</span>
-          </div>
-          <div class="bg-white p-5 min-h-[320px] flex flex-col items-center justify-center text-center">
-            <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-blue-400 to-purple-500 flex items-center justify-center text-white text-3xl shadow-md">🚀</div>
-            <h3 class="text-xl font-bold mt-3 text-gray-800">Alex Rivera</h3>
-            <p class="text-gray-500 text-sm max-w-xs">creative full‑stack dev · interactive storyteller</p>
-            <div class="grid grid-cols-2 gap-3 mt-5 w-full max-w-sm">
-              <div class="bg-gray-100 rounded-xl p-2 text-xs font-mono">✨ three.js demo</div>
-              <div class="bg-gray-100 rounded-xl p-2 text-xs font-mono">⚡ react playground</div>
-            </div>
-            <div class="mt-5 w-full bg-gray-100 rounded-full h-2"></div>
-            <p class="text-xs text-gray-400 mt-3">⚡ hosted project active · 128 visits</p>
-          </div>
-        </div>
-        <div class="absolute -bottom-6 -left-6 w-32 h-32 bg-blue-200 rounded-full blur-3xl opacity-40 -z-10"></div>
-      </div>
+    <div class="hero-illustration">
+      <i class="fas fa-cubes"></i>
     </div>
   </section>
 
-  <!-- FEATURE GRID -->
-  <section id="features" class="py-20 px-6 bg-white border-y border-gray-100">
-    <div class="max-w-7xl mx-auto">
-      <div class="text-center max-w-2xl mx-auto mb-16">
-        <span class="text-blue-600 font-semibold text-sm uppercase tracking-wider">Core power</span>
-        <h2 class="text-4xl md:text-5xl font-bold mt-2 text-gray-900">Everything you need to <br>stand out</h2>
-        <p class="text-gray-500 text-lg mt-4">No more scattered links — manage your portfolio, projects, and stats from one dashboard.</p>
+  <!-- API Cards -->
+  <div class="section-title">
+    <i class="fas fa-bolt"></i> Core API modules
+  </div>
+  <div class="api-grid">
+
+    <!-- Auth -->
+    <div class="api-card">
+      <div class="card-icon"><i class="fas fa-lock"></i></div>
+      <h3>Authentication</h3>
+      <p>Register, login, verify, profile, sessions, password change & device management.</p>
+      <div>
+        <span class="method-tag">POST</span><span class="endpoint-badge">/api/auth?action=register</span>
       </div>
-      <div class="grid md:grid-cols-3 gap-8">
-        <div class="feature-hover bg-white rounded-2xl p-6 shadow-sm border border-gray-100 transition-all">
-          <div class="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-2xl mb-4">📁</div>
-          <h3 class="text-xl font-bold">Hosted projects + full HTML</h3>
-          <p class="text-gray-500 mt-2">Deploy interactive demos, three.js scenes, or design prototypes. Each project gets a unique URL.</p>
-        </div>
-        <div class="feature-hover bg-white rounded-2xl p-6 shadow-sm border border-gray-100 transition-all">
-          <div class="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center text-2xl mb-4">📈</div>
-          <h3 class="text-xl font-bold">Privacy-first analytics</h3>
-          <p class="text-gray-500 mt-2">Track unique visitors, referrers, and direct traffic. IPs are hashed, and you own every byte of data.</p>
-        </div>
-        <div class="feature-hover bg-white rounded-2xl p-6 shadow-sm border border-gray-100 transition-all">
-          <div class="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center text-2xl mb-4">🎨</div>
-          <h3 class="text-xl font-bold">Customize profile & portfolio</h3>
-          <p class="text-gray-500 mt-2">Switch between hosted, redirect, or minimal mode. Update icon, bio, and portfolio content with zero friction.</p>
-        </div>
-        <div class="feature-hover bg-white rounded-2xl p-6 shadow-sm border border-gray-100 transition-all">
-          <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-2xl mb-4">🔑</div>
-          <h3 class="text-xl font-bold">JWT auth + secure storage</h3>
-          <p class="text-gray-500 mt-2">Password hashing (SHA256+salt), 14d tokens, email indexing. Admin tools to manage users safely.</p>
-        </div>
-        <div class="feature-hover bg-white rounded-2xl p-6 shadow-sm border border-gray-100 transition-all">
-          <div class="w-12 h-12 rounded-xl bg-rose-100 flex items-center justify-center text-2xl mb-4">🌐</div>
-          <h3 class="text-xl font-bold">Public portfolio routes</h3>
-          <p class="text-gray-500 mt-2">Share your tag: <span class="font-mono text-blue-600">myexploits.vercel.app/portfolio?user_slug=username</span> — instant web presence.</p>
-        </div>
-        <div class="feature-hover bg-white rounded-2xl p-6 shadow-sm border border-gray-100 transition-all">
-          <div class="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center text-2xl mb-4">🛠️</div>
-          <h3 class="text-xl font-bold">Project types: image/link/hosted</h3>
-          <p class="text-gray-500 mt-2">Showcase anything — from design mocks to external tools. Visibility: public / private / test.</p>
-        </div>
+      <div style="margin-top: 0.6rem;">
+        <span class="method-tag">POST</span><span class="endpoint-badge">/api/auth?action=login</span>
+      </div>
+      <div class="card-footer">
+        <span><i class="fas fa-check-circle"></i> 12 endpoints</span>
+        <span><i class="fas fa-user"></i> JWT + device</span>
       </div>
     </div>
-  </section>
 
-  <!-- DEMO SCREENSHOTS / INTERACTIVE DEMO SHOWCASE -->
-  <section id="demos" class="py-24 px-6 bg-gradient-to-b from-gray-50 to-white">
-    <div class="max-w-7xl mx-auto">
-      <div class="text-center mb-14">
-        <h2 class="text-4xl font-bold text-gray-900">See Exploits in action</h2>
-        <p class="text-gray-500 text-lg mt-2">Real previews — hosted projects, analytics dashboard & portfolio snapshots</p>
+    <!-- File Hosting -->
+    <div class="api-card">
+      <div class="card-icon"><i class="fas fa-file-code"></i></div>
+      <h3>File Hosting</h3>
+      <p>Upload, retrieve, update, delete files & images. Direct URLs + ImgBB integration.</p>
+      <div>
+        <span class="method-tag">POST</span><span class="endpoint-badge">/api/host</span>
+        <span class="method-tag" style="background: #d9d0f5;">GET</span><span class="endpoint-badge">/api/host?user_id=...</span>
       </div>
-
-      <!-- demo cards -->
-      <div class="grid md:grid-cols-2 gap-10">
-        <!-- card 1: hosted project preview -->
-        <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-200/70 transition-all hover:shadow-2xl">
-          <div class="bg-gray-900 text-white text-xs px-4 py-2 flex justify-between items-center">
-            <span>🌐 live preview: three.js galaxy</span>
-            <span class="bg-blue-500/20 px-2 py-0.5 rounded-full">hosted project</span>
-          </div>
-          <div class="p-5 bg-white">
-            <div class="aspect-video bg-gradient-to-br from-indigo-900 to-purple-800 rounded-xl flex items-center justify-center text-white shadow-inner">
-              <div class="text-center">
-                <div class="text-5xl mb-2">✨🌀</div>
-                <p class="font-mono text-sm">interactive 3D galaxy — click & drag</p>
-                <button onclick="openDemoModal('galaxy')" class="mt-3 text-xs bg-white/20 backdrop-blur px-4 py-1.5 rounded-full hover:bg-white/30 transition">preview demo</button>
-              </div>
-            </div>
-            <div class="mt-4 flex justify-between items-center">
-              <div><span class="font-bold">galaxy-explorer</span><span class="text-gray-400 text-sm ml-2">/projects/</span></div>
-              <div class="flex gap-2 text-xs text-gray-500">📊 342 visits · unique 124</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- card 2: analytics dashboard mock -->
-        <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-200/70 transition-all hover:shadow-2xl">
-          <div class="bg-gray-800 text-white text-xs px-4 py-2 flex justify-between">
-            <span>📊 analytics dashboard</span>
-            <span class="bg-green-500/30 px-2 rounded-full">real‑time</span>
-          </div>
-          <div class="p-5">
-            <div class="bg-gray-50 rounded-xl p-3 font-mono text-sm space-y-2">
-              <div class="flex justify-between border-b pb-1"><span>Total visits</span><span class="font-bold">1,284</span></div>
-              <div class="flex justify-between border-b pb-1"><span>Unique visitors (24h)</span><span class="font-bold">203</span></div>
-              <div class="flex justify-between"><span>Top referrer</span><span class="text-blue-600">twitter.com/share</span></div>
-              <div class="w-full bg-gray-200 rounded-full h-2 mt-2"><div class="bg-purple-500 w-3/4 h-2 rounded-full"></div></div>
-              <p class="text-xs text-gray-400 mt-2">IP‑hashed · GDPR friendly · direct traffic detected</p>
-            </div>
-            <div class="mt-4 text-right"><span class="text-xs text-gray-400">last 100 visits tracked per project</span></div>
-          </div>
-        </div>
-
-        <!-- card 3: portfolio modes (switch) + screenshot -->
-        <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-200/70 md:col-span-2 grid md:grid-cols-2 gap-0">
-          <div class="p-6">
-            <h3 class="text-xl font-bold flex items-center gap-2"><span>🎭</span> Portfolio flexibility</h3>
-            <ul class="mt-3 space-y-3 text-gray-600">
-              <li class="flex gap-2"><span class="text-blue-500">▹</span> <strong>Hosted mode</strong> – custom HTML/CSS/JS with full interactivity</li>
-              <li class="flex gap-2"><span class="text-blue-500">▹</span> <strong>Redirect mode</strong> – send visitors to your custom domain</li>
-              <li class="flex gap-2"><span class="text-blue-500">▹</span> <strong>Minimal profile</strong> – show icon + bio + coming soon</li>
-            </ul>
-            <div class="mt-5 p-3 bg-gray-100 rounded-xl text-sm font-mono">
-              <span class="text-gray-500">GET</span> https://myexploits.vercel.app/portfolio?user_slug=designwiz<br/>
-              → returns hosted portfolio or redirect
-            </div>
-          </div>
-          <div class="bg-gray-900 p-5 flex items-center justify-center rounded-bl-2xl">
-            <div class="bg-white/5 p-4 rounded-2xl w-full text-center">
-              <div class="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-orange-400 mx-auto"></div>
-              <p class="text-white font-mono text-xs mt-2">"designwiz" portfolio → redirects to behance</p>
-              <div class="flex gap-1 justify-center mt-2"><span class="w-2 h-2 bg-green-400 rounded-full"></span><span class="text-gray-300 text-[11px]">redirect active</span></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- card 4: project creation demo (inline) -->
-        <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-200/70">
-          <div class="bg-gray-100 px-5 py-3 border-b flex gap-3">
-            <div class="w-3 h-3 rounded-full bg-gray-400"></div><div class="w-3 h-3 rounded-full bg-gray-400"></div>
-            <span class="text-sm font-medium">create new project · API example</span>
-          </div>
-          <div class="p-5 bg-gray-50">
-            <pre class="text-xs bg-gray-900 text-green-300 p-4 rounded-xl overflow-x-auto"><code>// POST /api/projects?action=create
-{
-  "name": "glassmorphism UI",
-  "type": "hosted",
-  "visibility": "public",
-  "content": "&lt;div&gt;✨ interactive&lt;/div&gt;"
-}</code></pre>
-            <div class="flex justify-end mt-3"><button onclick="openDemoModal('apiDemo')" class="text-blue-600 text-sm font-medium">▶ try demo response</button></div>
-          </div>
-        </div>
-        <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-200/70 flex flex-col">
-          <div class="p-6 flex-1">
-            <div class="flex items-center gap-3"><span class="text-3xl">🧑‍🎨</span><h3 class="font-bold text-xl">For designers & devs</h3></div>
-            <p class="mt-2 text-gray-500">Build a stunning grid of projects with image thumbnails, hosted experiments, and track which ones get the most love.</p>
-            <div class="grid grid-cols-3 gap-2 mt-5">
-              <div class="bg-gray-200 h-16 rounded-lg flex items-center justify-center text-2xl">🎨</div>
-              <div class="bg-gray-200 h-16 rounded-lg flex items-center justify-center text-2xl">💻</div>
-              <div class="bg-gray-200 h-16 rounded-lg flex items-center justify-center text-2xl">📱</div>
-            </div>
-          </div>
-          <div class="bg-blue-50 px-5 py-3 text-xs text-blue-700">⭐ public projects appear on /api/projects?action=public&user_tag=...</div>
-        </div>
+      <div style="margin-top: 0.6rem;">
+        <span class="method-tag">POST</span><span class="endpoint-badge">/api/host/image</span>
+      </div>
+      <div class="card-footer">
+        <span><i class="fas fa-image"></i> images + files</span>
+        <span><i class="fas fa-chart-line"></i> analytics</span>
       </div>
     </div>
-  </section>
 
-  <!-- SHOWCASE: real user demo snapshots + stats -->
-  <section id="showcase" class="py-20 px-6 bg-white">
-    <div class="max-w-7xl mx-auto">
-      <div class="flex flex-col md:flex-row justify-between items-end mb-12">
-        <div><span class="text-purple-600 font-semibold text-sm">⚡ live ecosystem</span>
-        <h2 class="text-3xl md:text-4xl font-bold mt-1">What creators build on Exploits</h2></div>
-        <div class="flex gap-1 mt-3"><span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">+120 projects hosted</span></div>
+    <!-- Notifications -->
+    <div class="api-card">
+      <div class="card-icon"><i class="fas fa-bell"></i></div>
+      <h3>Notifications</h3>
+      <p>Send to topic, user, broadcast, subscribe, history, read status & device tokens.</p>
+      <div>
+        <span class="method-tag">POST</span><span class="endpoint-badge">/api/notify?action=send-topic</span>
       </div>
-      <div class="grid md:grid-cols-3 gap-7">
-        <div class="border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg transition">
-          <img src="https://picsum.photos/id/26/400/220" alt="Motion Lab portfolio showcase - hosted three.js experiments" class="w-full h-40 object-cover">
-          <div class="p-5"><div class="font-bold">@motion_lab</div><p class="text-gray-500 text-sm">Hosted portfolio with three.js + WebGL experiments. Gets 240 unique visitors/week.</p><div class="flex mt-2 text-xs text-blue-500">🔗 hosted project active</div></div>
-        </div>
-        <div class="border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg transition">
-          <img src="https://picsum.photos/id/1/400/220" alt="UX Sage portfolio - redirect setup with analytics" class="w-full h-40 object-cover">
-          <div class="p-5"><div class="font-bold">@ux_sage</div><p class="text-gray-500 text-sm">Redirect portfolio → personal site, analytics show 67% traffic from Dribbble.</p><div class="flex mt-2 text-xs text-purple-500">📊 analytics enabled</div></div>
-        </div>
-        <div class="border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg transition">
-          <img src="https://picsum.photos/id/169/400/220" alt="Code Witch portfolio - multiple hosted projects showcase" class="w-full h-40 object-cover">
-          <div class="p-5"><div class="font-bold">@codewitch</div><p class="text-gray-500 text-sm">5 hosted projects (react playground, canvas game, design system). total visits 1.2k+</p><div class="flex mt-2 text-xs text-green-600">✨ full HTML customisation</div></div>
-        </div>
+      <div style="margin-top: 0.6rem;">
+        <span class="method-tag">POST</span><span class="endpoint-badge">/api/notify?action=subscribe</span>
       </div>
-    </div>
-  </section>
-
-  <!-- CTA -->
-  <section class="py-20 px-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-t-3xl mx-4 md:mx-8 mb-10">
-    <div class="max-w-4xl mx-auto text-center">
-      <h2 class="text-4xl md:text-5xl font-bold">Ready to launch your portfolio?</h2>
-      <p class="text-gray-300 text-lg mt-4">Join developers and designers who own their creative footprint. Zero lock‑in, full control.</p>
-      <div class="flex flex-wrap justify-center gap-5 mt-10">
-        <a href="/login" class="px-8 py-3 rounded-full bg-white text-gray-900 font-bold shadow-xl hover:bg-gray-100 transition">Get started free</a>
-        <a href="/docs" class="px-8 py-3 rounded-full border border-white/30 text-white font-medium hover:bg-white/10 transition">Read documentation</a>
-      </div>
-      <p class="text-sm text-gray-400 mt-8">✨ No credit card • full API access • Firebase backend</p>
-    </div>
-  </section>
-
-  <!-- footer -->
-  <footer class="py-8 px-6 text-center text-gray-500 text-sm border-t">
-    <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3">
-      <span>© 2025 Exploits — portfolio infrastructure for creatives</span>
-      <div class="flex gap-6">
-        <a href="/privacy" class="hover:text-gray-900">Privacy</a>
-        <a href="/terms" class="hover:text-gray-900">Terms</a>
-        <a href="https://github.com/exploits" class="hover:text-gray-900">GitHub</a>
-      </div>
-    </div>
-  </footer>
-
-  <!-- DEMO MODAL (interactive preview simulation) -->
-  <div id="demoModal" class="fixed inset-0 flex items-center justify-center z-50 hidden transition-all duration-300" style="background: rgba(0,0,0,0.6); backdrop-filter: blur(5px);">
-    <div class="bg-white rounded-2xl max-w-md w-full mx-4 p-6 shadow-2xl transform transition-all">
-      <div class="flex justify-between items-center">
-        <h3 class="text-xl font-bold" id="modalTitle">Demo preview</h3>
-        <button onclick="closeDemoModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
-      </div>
-      <div id="modalContent" class="mt-4 text-gray-600">
-        <!-- dynamic content -->
-      </div>
-      <div class="mt-6 flex justify-end">
-        <button onclick="closeDemoModal()" class="px-4 py-2 bg-gray-100 rounded-xl text-sm font-medium">Close</button>
+      <div class="card-footer">
+        <span><i class="fas fa-users"></i> topic / user / all</span>
+        <span><i class="fas fa-history"></i> history + unread</span>
       </div>
     </div>
   </div>
 
-  <script>
-    function openDemoModal(type) {
-      const modal = document.getElementById('demoModal');
-      const titleEl = document.getElementById('modalTitle');
-      const contentEl = document.getElementById('modalContent');
-      if (type === 'galaxy') {
-        titleEl.innerText = '🌌 hosted project preview (galaxy-explorer)';
-        contentEl.innerHTML = `<div class="bg-gray-900 rounded-xl p-4 text-white text-center"><div class="text-4xl mb-2">✨🌀✨</div><p class="text-sm">Interactive 3D scene loaded from Exploits hosted project. Full JavaScript/Three.js allowed.<br><span class="text-xs text-gray-400">URL: /portfolio?user_slug=maker&project=galaxy-explorer</span></p><div class="mt-3 flex justify-center gap-2"><span class="bg-blue-500/30 px-2 py-1 rounded-full text-xs">click & drag</span><span class="bg-purple-500/30 px-2 py-1 rounded-full text-xs">live demo</span></div></div><p class="mt-3 text-xs text-gray-500">CSP allows scripts/styles — fully functional HTML/CSS/JS sandbox.</p>`;
-      } else if (type === 'apiDemo') {
-        titleEl.innerText = '⚡ API response simulation';
-        contentEl.innerHTML = `<pre class="bg-gray-800 text-green-300 p-3 rounded-lg text-xs overflow-auto">{
-  "message": "Project created successfully",
-  "project": {
-    "projectId": "proj_1739981234_abc123",
-    "name": "glassmorphism UI",
-    "slug": "glassmorphism-ui",
-    "hosted_url": "https://myexploits.vercel.app/projects/user123/glassmorphism-ui",
-    "visibility": "public"
-  },
-  "publish_url": "https://myexploits.vercel.app/user123/glassmorphism-ui"
-}</pre><p class="text-xs mt-2 text-gray-500">✨ Analytics session auto‑created if enabled.</p>`;
-      } else {
-        titleEl.innerText = 'Exploits live demo';
-        contentEl.innerHTML = `<div class="flex flex-col gap-3"><div class="bg-gray-100 p-4 rounded-xl text-center">🎯 Interactive project gallery, real-time visit counter and privacy-first analytics.</div><div class="text-sm text-blue-600">Try creating your own: <span class="font-mono">POST /api/auth?action=create</span></div></div>`;
-      }
-      modal.classList.remove('hidden');
-    }
-    function closeDemoModal() {
-      document.getElementById('demoModal').classList.add('hidden');
-    }
-    window.onclick = function(e) {
-      const modal = document.getElementById('demoModal');
-      if (e.target === modal) closeDemoModal();
-    }
-  </script>
+  <!-- Code preview (showcase) -->
+  <div class="code-preview">
+    <div class="code-header">
+      <span><i class="fas fa-terminal"></i>  Quick start · register user</span>
+      <span><i class="fas fa-copy" style="opacity:0.6;"></i></span>
+    </div>
+    <pre>
+<span class="highlight">POST</span> /api/auth?action=register
+<span class="key">Headers</span>:
+  X-Device-Id: unique-device-identifier
+
+<span class="key">Body</span>:
+{
+  <span class="string">"email"</span>: <span class="string">"user@example.com"</span>,
+  <span class="string">"password"</span>: <span class="string">"SecurePass123!"</span>,
+  <span class="string">"username"</span>: <span class="string">"john_doe"</span>
+}
+
+<span class="key">Response</span> (201):
+{
+  <span class="string">"success"</span>: true,
+  <span class="string">"token"</span>: <span class="string">"eyJhbGciOiJIUzI1NiIs..."</span>,
+  <span class="string">"user"</span>: { <span class="string">"id"</span>: <span class="string">"john_doe"</span>, ... }
+}</pre>
+  </div>
+
+  <!-- additional info: endpoints list -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div style="background: white; padding: 1.5rem; border-radius: 24px; border:1px solid #eee9f5;">
+      <i class="fas fa-key" style="color:#6d5cfe; margin-bottom: 0.8rem;"></i>
+      <h4 style="font-weight:600;">Authentication</h4>
+      <ul style="list-style:none; font-size:0.85rem; color:#4d456b; margin-top:0.8rem; line-height:2;">
+        <li>✓ Register / Login</li>
+        <li>✓ Verify token</li>
+        <li>✓ Profile (get/update)</li>
+        <li>✓ Change password</li>
+        <li>✓ Logout / Delete</li>
+        <li>✓ Check username/email</li>
+        <li>✓ Sessions & revoke</li>
+      </ul>
+    </div>
+    <div style="background: white; padding: 1.5rem; border-radius: 24px; border:1px solid #eee9f5;">
+      <i class="fas fa-cloud-upload-alt" style="color:#6d5cfe; margin-bottom: 0.8rem;"></i>
+      <h4 style="font-weight:600;">File Hosting</h4>
+      <ul style="list-style:none; font-size:0.85rem; color:#4d456b; margin-top:0.8rem; line-height:2;">
+        <li>✓ Upload / Update</li>
+        <li>✓ Retrieve file</li>
+        <li>✓ Delete file</li>
+        <li>✓ List files</li>
+        <li>✓ Image upload (base64)</li>
+        <li>✓ Image metadata</li>
+        <li>✓ Analytics (views, etc)</li>
+      </ul>
+    </div>
+    <div style="background: white; padding: 1.5rem; border-radius: 24px; border:1px solid #eee9f5;">
+      <i class="fas fa-bell" style="color:#6d5cfe; margin-bottom: 0.8rem;"></i>
+      <h4 style="font-weight:600;">Notifications</h4>
+      <ul style="list-style:none; font-size:0.85rem; color:#4d456b; margin-top:0.8rem; line-height:2;">
+        <li>✓ Send to topic / user</li>
+        <li>✓ Broadcast to all</li>
+        <li>✓ Subscribe / unsubscribe</li>
+        <li>✓ History & read status</li>
+        <li>✓ Unread count</li>
+        <li>✓ Get topics / subscribers</li>
+        <li>✓ Delete history</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- footer -->
+  <footer class="footer">
+    <span>© 2026 localbase · complete API platform</span>
+    <div class="footer-links">
+      <a href="#"><i class="fab fa-github"></i> GitHub</a>
+      <a href="#"><i class="fas fa-book"></i> Docs</a>
+      <a href="#"><i class="fas fa-rocket"></i> Status</a>
+    </div>
+  </footer>
+
+</div>
 </body>
 </html>
