@@ -1,680 +1,932 @@
-//api/auth.js
-/**
- * Authentication & Portfolio API
- * 
- * This API handles user authentication, profile management, and portfolio hosting.
- * Features:
- * - User registration with email/password
- * - JWT-based authentication (14-day tokens)
- * - Portfolio hosting (HTML content, redirects, or minimal profiles)
- * - Profile management (icon, description)
- * - Public profile endpoints for portfolio pages
- * 
- * Database Structure (Firebase Realtime Database):
- * - ExAuths/users/{user_tag} - User profile data
- * - ExAuths/email_index/{cleaned_email} - Maps email to user_tag for fast login
- * - ExAuths/userids/{userId} - Maps user ID to user_tag
- * - ExAuths/usertags/{user_tag} - Maps user_tag to user ID
- */
-
 import { db } from "../utils/firebase.js";
 import crypto from 'crypto';
 
-// ===== Configuration Constants =====
-const DEFAULT_IMAGE = 'https://picsum.photos/200/200';  // Default profile picture
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY;        // Admin key for user deletion
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production'; // JWT signing key
-const BASE_URL = process.env.BASE_URL;                  // Base URL for generating portfolio links
+// ============================================
+// Configuration
+// ============================================
+const USERS_PATH = 'Users';
+const SESSIONS_PATH = 'Sessions';
+const DEVICES_PATH = 'Devices';
+const IP_ACCOUNT_LIMIT = 3; // Max accounts per IP
+const DEVICE_ACCOUNT_LIMIT = 1; // Max accounts per device
+const SESSION_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7 days
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 
-// ===== Helper Functions =====
+// ============================================
+// Helper Functions
+// ============================================
 
-/**
- * Generates a unique user ID
- * Format: exuser_{timestamp}_{random_hex}
- */
-const generateUserId = () => {
-  return `exuser_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
-};
-
-/**
- * Hashes a password with a random salt
- * @returns {string} Format: "salt:hash"
- */
-const hashPassword = (password) => {
+// Hash password using crypto (no bcrypt dependency)
+function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.createHash('sha256').update(password + salt).digest('hex');
+  const hash = crypto
+    .pbkdf2Sync(password, salt, 10000, 64, 'sha512')
+    .toString('hex');
   return `${salt}:${hash}`;
-};
+}
 
-/**
- * Verifies a password against its stored hash
- * @param {string} password - Plain text password to verify
- * @param {string} stored - Stored hash in "salt:hash" format
- * @returns {boolean} True if password matches
- */
-const verifyPassword = (password, stored) => {
-  const [salt, hash] = stored.split(':');
-  const newHash = crypto.createHash('sha256').update(password + salt).digest('hex');
-  return newHash === hash;
-};
+// Verify password
+function verifyPassword(password, storedHash) {
+  const [salt, hash] = storedHash.split(':');
+  const verifyHash = crypto
+    .pbkdf2Sync(password, salt, 10000, 64, 'sha512')
+    .toString('hex');
+  return hash === verifyHash;
+}
 
-/**
- * Generates a JWT token for authentication
- * Token payload includes userId, userTag, and expiration (14 days)
- * Format: base64Payload.signature
- */
-const generateToken = (userId, userTag) => {
-  const payload = {
-    userId,
-    userTag,
-    iss: 'exploits',           // Issuer identifier
-    iat: Math.floor(Date.now() / 1000), // Issued at timestamp
-    exp: Math.floor(Date.now() / 1000) + (14 * 24 * 60 * 60) // Expires in 14 days
-  };
-  const base64Payload = Buffer.from(JSON.stringify(payload)).toString('base64');
-  const signature = crypto.createHmac('sha256', JWT_SECRET).update(base64Payload).digest('base64');
-  return `${base64Payload}.${signature}`;
-};
+// Generate JWT-like token (simple secure token)
+function generateToken(userId, sessionId) {
+  const payload = `${userId}|${sessionId}|${Date.now()}`;
+  const signature = crypto
+    .createHmac('sha256', JWT_SECRET)
+    .update(payload)
+    .digest('hex');
+  return Buffer.from(`${payload}|${signature}`).toString('base64');
+}
 
-/**
- * Verifies and decodes a JWT token
- * @param {string} token - JWT token to verify
- * @returns {object|null} Decoded payload if valid, null otherwise
- * 
- * This function is exported for use in other API endpoints (like projects.js)
- */
-export const verifyToken = (token) => {
+// Verify token
+function verifyToken(token) {
   try {
-    const [base64Payload, signature] = token.split('.');
-    const expectedSignature = crypto.createHmac('sha256', JWT_SECRET).update(base64Payload).digest('base64');
-
-    // Check signature validity
-    if (signature !== expectedSignature) return null;
-
-    // Decode and parse payload
-    const payload = JSON.parse(Buffer.from(base64Payload, 'base64').toString());
+    const decoded = Buffer.from(token, 'base64').toString();
+    const [userId, sessionId, timestamp, signature] = decoded.split('|');
     
-    // Check expiration
-    if (payload.exp < Math.floor(Date.now() / 1000)) return null;
-
-    return payload;
+    const verifyPayload = `${userId}|${sessionId}|${timestamp}`;
+    const verifySignature = crypto
+      .createHmac('sha256', JWT_SECRET)
+      .update(verifyPayload)
+      .digest('hex');
+    
+    if (signature !== verifySignature) return null;
+    
+    // Check expiry (7 days)
+    if (Date.now() - parseInt(timestamp) > SESSION_EXPIRY) return null;
+    
+    return { userId, sessionId };
   } catch {
-    return null; // Return null for any parsing errors
+    return null;
   }
-};
+}
 
-/**
- * Cleans a user tag for use as a Firebase key
- * - Converts to lowercase
- * - Removes all non-alphanumeric characters
- */
-const cleanUserTag = (tag) => {
-  return tag.toLowerCase().replace(/[^a-z0-9]/g, '');
-};
+// Generate device fingerprint
+function generateDeviceFingerprint(deviceId) {
+  return crypto
+    .createHash('sha256')
+    .update(deviceId || 'unknown')
+    .digest('hex');
+}
 
-/**
- * Cleans an email for use as a Firebase key
- * Firebase doesn't allow characters: . # $ [ ] /
- * This replaces them with safe alternatives
- */
-const cleanEmail = (email) => {
-  if (!email) return '';
-  return email
-    .replace(/\./g, ',')        // Replace dots with commas
-    .replace(/#/g, '_hash_')    // Replace # with _hash_
-    .replace(/\$/g, '_dollar_') // Replace $ with _dollar_
-    .replace(/\[/g, '_lb_')     // Replace [ with _lb_
-    .replace(/\]/g, '_rb_')     // Replace ] with _rb_
-    .replace(/\//g, '_slash_'); // Replace / with _slash_
-};
+// Generate session ID
+function generateSessionId() {
+  return crypto.randomBytes(32).toString('hex');
+}
 
-/**
- * Reverses the email cleaning (utility function, not used directly in API)
- */
-const unescapeEmail = (cleanedEmail) => {
-  if (!cleanedEmail) return '';
-  return cleanedEmail
-    .replace(/,/g, '.')
-    .replace(/_hash_/g, '#')
-    .replace(/_dollar_/g, '$')
-    .replace(/_lb_/g, '[')
-    .replace(/_rb_/g, ']')
-    .replace(/_slash_/g, '/');
-};
+// Validation functions
+function validateEmail(email) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email);
+}
 
-/**
- * Sanitizes HTML content for hosted portfolios
- * - Removes inline event handlers (onclick, onload, etc.)
- - Replaces javascript: links with #
- * - Allows script tags and data-* attributes
- */
-const sanitizeHTML = (html) => {
-  if (!html) return null;
+function validatePassword(password) {
+  // Min 8 chars, at least one letter, one number, one special character
+  const re = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
+  return re.test(password);
+}
 
-  // Remove dangerous inline event handlers
-  let sanitized = html.replace(/\s+on\w+="[^"]*"/gi, '');
-  sanitized = sanitized.replace(/\s+on\w+='[^']*'/gi, '');
+function validateUsername(username) {
+  // Alphanumeric, underscore, 3-20 chars
+  const re = /^[a-zA-Z0-9_]{3,20}$/;
+  return re.test(username);
+}
 
-  // Remove javascript: links
-  sanitized = sanitized.replace(/javascript:/gi, '#');
+// Get client IP
+function getClientIP(req) {
+  return req.headers['x-forwarded-for']?.split(',')[0] || 
+         req.socket?.remoteAddress || 
+         req.connection?.remoteAddress ||
+         'unknown';
+}
 
-  // Allow script tags and their contents
-  // Allow data-* attributes (they're safe)
-  // Allow all other HTML content
+// Rate limiting helper
+async function checkRateLimit(ip, action) {
+  const rateLimitRef = db.ref(`RateLimits/${action}/${ip.replace(/\./g, '_')}`);
+  const snapshot = await rateLimitRef.once('value');
+  const now = Date.now();
+  
+  if (snapshot.exists()) {
+    const data = snapshot.val();
+    const timeWindow = 60 * 60 * 1000; // 1 hour
+    const maxAttempts = action === 'register' ? 5 : 10;
+    
+    // Clean old attempts
+    const attempts = (data.attempts || []).filter(t => now - t < timeWindow);
+    
+    if (attempts.length >= maxAttempts) {
+      return false;
+    }
+    
+    attempts.push(now);
+    await rateLimitRef.update({ attempts });
+    return true;
+  } else {
+    await rateLimitRef.set({ attempts: [now] });
+    return true;
+  }
+}
 
-  return sanitized;
-};
+// ============================================
+// Main API Handler
+// ============================================
 
-/**
- * Parses JSON request body from incoming request
- */
-const parseBody = async (req) => {
-  return new Promise((resolve, reject) => {
-    let body = '';
-    req.on('data', chunk => {
-      body += chunk.toString();
-    });
-    req.on('end', () => {
-      try {
-        if (body) {
-          resolve(JSON.parse(body));
-        } else {
-          resolve({});
-        }
-      } catch (error) {
-        reject(error);
-      }
-    });
-    req.on('error', reject);
-  });
-};
-
-// ===== Main API Handler =====
-
-/**
- * Main API handler for authentication endpoints
- * 
- * Endpoints:
- * - GET /api/auth?user_tag={tag} - Public portfolio page
- * - POST /api/auth?action=create - Create new user
- * - POST /api/auth?action=login - Login user
- * - PUT /api/auth?action=edit - Edit user profile (requires auth)
- * - DELETE /api/auth?action=delete - Delete user (requires admin key)
- * - POST /api/auth?action=portfolio - Manage portfolio (requires auth)
- * - GET /api/auth?action=profile&user_tag={tag} - Get public profile
- */
 export default async function handler(req, res) {
-  // Set CORS headers for cross-origin requests
+  // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Device-Id');
 
-  // Handle preflight requests
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // Parse request body for non-GET requests
-  let body = {};
-  if (req.method !== 'GET' && req.method !== 'OPTIONS') {
-    try {
-      body = await parseBody(req);
-      req.body = body;
-    } catch (error) {
-      console.error('Error parsing body:', error);
-      return res.status(400).json({ error: 'Invalid JSON in request body' });
-    }
-  }
+  const action = req.query.action || req.body.action;
+  const clientIP = getClientIP(req);
+  const deviceId = req.body.device_id || req.query.device_id || req.headers['x-device-id'];
 
-  const { action, user_tag } = req.query;
+  // ============================================
+  // PUBLIC: Health Check
+  // ============================================
+  if (req.method === 'GET' && !action) {
+    return res.status(200).json({
+      success: true,
+      message: 'Auth API is running',
+      timestamp: Date.now()
+    });
+  }
 
   try {
-    // Public portfolio endpoint - serves HTML or redirects
-    // URL pattern: GET /api/auth/{user_tag}
-    if (req.method === 'GET' && user_tag && !action) {
-      return await handleGetPortfolio(req, res, user_tag);
-    }
+    // ============================================
+    // REGISTER - POST /api/auth?action=register
+    // ============================================
+    if (req.method === 'POST' && action === 'register') {
+      const { email, password, username } = req.body;
 
-    // Route to appropriate handler based on action parameter
-    switch (action) {
-      case 'create':
-        return await handleCreate(req, res);
-      case 'login':
-        return await handleLogin(req, res);
-      case 'edit':
-        return await handleEdit(req, res);
-      case 'delete':
-        return await handleDelete(req, res);
-      case 'portfolio':
-        return await handlePortfolioActions(req, res);
-      case 'profile':
-        return await handleGetPublicProfile(req, res);
-      default:
-        return res.status(400).json({ error: 'Invalid action' });
-    }
-  } catch (error) {
-    console.error('Auth API Error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-}
+      // Validate input
+      if (!email || !password || !username) {
+        return res.status(400).json({ 
+          error: 'Email, password, and username are required' 
+        });
+      }
 
-// ===== Request Handlers =====
+      if (!validateEmail(email)) {
+        return res.status(400).json({ error: 'Invalid email format' });
+      }
 
-/**
- * CREATE - User Registration
- * POST /api/auth?action=create
- * 
- * Body: {
- *   email: string,
- *   password: string,
- *   user_tag: string,
- *   icon?: string (URL),
- *   description?: string,
- *   portfolio_type?: 'none' | 'hosted' | 'redirect',
- *   portfolio_content?: string (HTML for hosted type),
- *   portfolio_redirect?: string (URL for redirect type)
- * }
- * 
- * Response: { message, userId, user_tag, portfolio_url, token, expires_in }
- */
-async function handleCreate(req, res) {
-  const { email, password, user_tag, icon, description, portfolio_type, portfolio_content, portfolio_redirect } = req.body;
+      if (!validatePassword(password)) {
+        return res.status(400).json({ 
+          error: 'Password must be at least 8 characters with letters, numbers, and special characters' 
+        });
+      }
 
-  // Validate required fields
-  if (!email || !password || !user_tag) {
-    return res.status(400).json({ error: 'Email, password, and user_tag are required' });
-  }
+      if (!validateUsername(username)) {
+        return res.status(400).json({ 
+          error: 'Username must be 3-20 characters (letters, numbers, underscore only)' 
+        });
+      }
 
-  const cleanTag = cleanUserTag(user_tag);
-  const cleanEmailKey = cleanEmail(email);
+      // Check rate limit
+      const rateLimitOK = await checkRateLimit(clientIP, 'register');
+      if (!rateLimitOK) {
+        return res.status(429).json({ 
+          error: 'Too many registration attempts. Please try again later.' 
+        });
+      }
 
-  // Check if user_tag is already taken
-  const userRef = db.ref(`ExAuths/users/${cleanTag}`);
-  const snapshot = await userRef.once('value');
-  if (snapshot.exists()) {
-    return res.status(400).json({ error: 'User tag already exists' });
-  }
+      // Check if email already exists
+      const usersRef = db.ref(USERS_PATH);
+      const emailSnapshot = await usersRef.orderByChild('email').equalTo(email.toLowerCase()).once('value');
+      
+      let emailExists = false;
+      emailSnapshot.forEach(() => { emailExists = true; });
+      
+      if (emailExists) {
+        return res.status(409).json({ error: 'Email already registered' });
+      }
 
-  // Check if email is already registered
-  const emailRef = db.ref(`ExAuths/email_index/${cleanEmailKey}`);
-  const emailSnapshot = await emailRef.once('value');
-  if (emailSnapshot.exists()) {
-    return res.status(400).json({ error: 'Email already registered' });
-  }
+      // Check if username already exists
+      const usernameSnapshot = await usersRef.orderByChild('username').equalTo(username).once('value');
+      
+      let usernameExists = false;
+      usernameSnapshot.forEach(() => { usernameExists = true; });
+      
+      if (usernameExists) {
+        return res.status(409).json({ error: 'Username already taken' });
+      }
 
-  // Generate user ID and hash password
-  const userId = generateUserId();
-  const hashedPassword = hashPassword(password);
+      // Check device limit (one account per device)
+      const deviceHash = generateDeviceFingerprint(deviceId);
+      const deviceRef = db.ref(`${DEVICES_PATH}/${deviceHash}`);
+      const deviceSnapshot = await deviceRef.once('value');
+      
+      if (deviceSnapshot.exists()) {
+        const deviceData = deviceSnapshot.val();
+        if (deviceData.user_ids && deviceData.user_ids.length >= DEVICE_ACCOUNT_LIMIT) {
+          return res.status(403).json({ 
+            error: 'This device already has an account. One account per device allowed.' 
+          });
+        }
+      }
 
-  // Setup portfolio configuration
-  const portfolio = {
-    type: portfolio_type || 'none',
-    content: portfolio_type === 'hosted' ? sanitizeHTML(portfolio_content) : null,
-    redirect_url: portfolio_type === 'redirect' ? portfolio_redirect : null,
-    last_updated: new Date().toISOString()
-  };
+      // Check IP limit
+      const ipRef = db.ref(`${DEVICES_PATH}/by_ip/${clientIP.replace(/\./g, '_')}`);
+      const ipSnapshot = await ipRef.once('value');
+      
+      if (ipSnapshot.exists()) {
+        const ipData = ipSnapshot.val();
+        if (ipData.user_ids && ipData.user_ids.length >= IP_ACCOUNT_LIMIT) {
+          return res.status(403).json({ 
+            error: `Too many accounts from this IP address (max ${IP_ACCOUNT_LIMIT})` 
+          });
+        }
+      }
 
-  // Create user object
-  const user = {
-    userId,
-    email,
-    password: hashedPassword,
-    user_tag: cleanTag,
-    icon: icon || DEFAULT_IMAGE,
-    description: description || '',
-    portfolio,
-    portfolio_url: `${BASE_URL}/${cleanTag}`,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  };
+      // Create user
+      const userId = username; // Use username as the ID
+      const hashedPassword = hashPassword(password);
+      const now = Date.now();
 
-  // Store user data in Firebase
-  await userRef.set(user);
-  await db.ref(`ExAuths/email_index/${cleanEmailKey}`).set(cleanTag);
-  await db.ref(`ExAuths/userids/${userId}`).set(cleanTag);
-  await db.ref(`ExAuths/usertags/${cleanTag}`).set(userId);
-
-  // Generate authentication token
-  const token = generateToken(userId, cleanTag);
-
-  return res.status(201).json({
-    message: 'User created successfully',
-    userId,
-    user_tag: cleanTag,
-    portfolio_url: user.portfolio_url,
-    token,
-    expires_in: '14d'
-  });
-}
-
-/**
- * LOGIN - User Authentication
- * POST /api/auth?action=login
- * 
- * Body: { email: string, password: string }
- * Response: { message, userId, user_tag, portfolio_url, token, expires_in }
- */
-async function handleLogin(req, res) {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required' });
-  }
-
-  const cleanEmailKey = cleanEmail(email);
-
-  // Find user by email (O(1) lookup using email index)
-  const emailRef = db.ref(`ExAuths/email_index/${cleanEmailKey}`);
-  const emailSnapshot = await emailRef.once('value');
-  const userTag = emailSnapshot.val();
-
-  if (!userTag) {
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
-
-  // Get user data
-  const userRef = db.ref(`ExAuths/users/${userTag}`);
-  const userSnapshot = await userRef.once('value');
-  const user = userSnapshot.val();
-
-  if (!user) {
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
-
-  // Verify password
-  if (!verifyPassword(password, user.password)) {
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
-
-  // Generate new token
-  const token = generateToken(user.userId, userTag);
-
-  return res.json({
-    message: 'Login successful',
-    userId: user.userId,
-    user_tag: userTag,
-    portfolio_url: user.portfolio_url,
-    token,
-    expires_in: '14d'
-  });
-}
-
-/**
- * EDIT - Update User Profile
- * PUT /api/auth?action=edit
- * 
- * Headers: { Authorization: "Bearer {token}" }
- * Body: { field: 'icon' | 'description', value: string }
- * Response: { message, updated_field }
- */
-async function handleEdit(req, res) {
-  // Verify authentication
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({ error: 'No token provided' });
-  }
-
-  const token = authHeader.split(' ')[1];
-  const payload = verifyToken(token);
-
-  if (!payload) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
-  }
-
-  const { field, value } = req.body;
-
-  if (!field || value === undefined) {
-    return res.status(400).json({ error: 'Field and value are required' });
-  }
-
-  // Only allow editing certain fields
-  const allowedFields = ['icon', 'description'];
-  if (!allowedFields.includes(field)) {
-    return res.status(400).json({ error: 'Invalid field' });
-  }
-
-  // Update user in database
-  const userRef = db.ref(`ExAuths/users/${payload.userTag}`);
-  await userRef.update({ 
-    [field]: value, 
-    updated_at: new Date().toISOString() 
-  });
-
-  return res.json({
-    message: 'User updated successfully',
-    updated_field: field
-  });
-}
-
-/**
- * DELETE - Remove User Account (Admin Only)
- * DELETE /api/auth?action=delete
- * 
- * Headers: { x-admin-key: string }
- * Body: { user_tag: string }
- * Response: { message }
- */
-async function handleDelete(req, res) {
-  const adminKey = req.headers['x-admin-key'];
-
-  // Verify admin access
-  if (!adminKey || adminKey !== ADMIN_API_KEY) {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-
-  const { user_tag } = req.body;
-
-  if (!user_tag) {
-    return res.status(400).json({ error: 'User tag required' });
-  }
-
-  const cleanTag = cleanUserTag(user_tag);
-  const userRef = db.ref(`ExAuths/users/${cleanTag}`);
-  const snapshot = await userRef.once('value');
-  const user = snapshot.val();
-
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-
-  const cleanEmailKey = cleanEmail(user.email);
-
-  // Delete all user data from all indices
-  await userRef.remove();
-  await db.ref(`ExAuths/email_index/${cleanEmailKey}`).remove();
-  await db.ref(`ExAuths/userids/${user.userId}`).remove();
-  await db.ref(`ExAuths/usertags/${cleanTag}`).remove();
-
-  return res.json({ message: 'User deleted successfully' });
-}
-
-/**
- * PORTFOLIO - Manage Portfolio Configuration
- * POST /api/auth?action=portfolio
- * 
- * Headers: { Authorization: "Bearer {token}" }
- * Body: {
- *   subaction: 'update' | 'get' | 'disable',
- *   portfolio_type?: 'none' | 'hosted' | 'redirect',
- *   portfolio_content?: string (for hosted type),
- *   portfolio_redirect?: string (for redirect type)
- * }
- * Response: Portfolio data or confirmation message
- */
-async function handlePortfolioActions(req, res) {
-  // Verify authentication
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({ error: 'No token provided' });
-  }
-
-  const token = authHeader.split(' ')[1];
-  const payload = verifyToken(token);
-
-  if (!payload) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
-  }
-
-  const { subaction, portfolio_type, portfolio_content, portfolio_redirect } = req.body;
-
-  const userRef = db.ref(`ExAuths/users/${payload.userTag}`);
-  const userSnapshot = await userRef.once('value');
-  const user = userSnapshot.val();
-
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-
-  switch (subaction) {
-    case 'update':
-      // Update portfolio configuration
-      const portfolio = {
-        type: portfolio_type || user.portfolio?.type || 'none',
-        content: portfolio_type === 'hosted' ? sanitizeHTML(portfolio_content) : null,
-        redirect_url: portfolio_type === 'redirect' ? portfolio_redirect : null,
-        last_updated: new Date().toISOString()
+      const userData = {
+        id: userId,
+        username: username,
+        email: email.toLowerCase(),
+        password: hashedPassword,
+        created_at: now,
+        updated_at: now,
+        last_login: null,
+        email_verified: false,
+        is_active: true,
+        profile: {
+          displayName: username,
+          bio: '',
+          avatar: null
+        },
+        metadata: {
+          ip: clientIP,
+          device_id: deviceId || 'unknown',
+          device_hash: deviceHash,
+          created_with: 'web'
+        }
       };
 
-      await userRef.update({
-        portfolio,
-        updated_at: new Date().toISOString()
+      // Save user
+      const userRef = db.ref(`${USERS_PATH}/${userId}`);
+      await userRef.set(userData);
+
+      // Register device
+      const deviceData = {
+        device_hash: deviceHash,
+        device_id: deviceId || 'unknown',
+        user_ids: [userId],
+        first_seen: now,
+        last_seen: now,
+        ip_addresses: [clientIP]
+      };
+      await deviceRef.set(deviceData);
+
+      // Register IP
+      const ipData = {
+        user_ids: [userId],
+        first_seen: now,
+        last_seen: now
+      };
+      await ipRef.set(ipData);
+
+      // Create session
+      const sessionId = generateSessionId();
+      const sessionData = {
+        user_id: userId,
+        session_id: sessionId,
+        created_at: now,
+        expires_at: now + SESSION_EXPIRY,
+        device_hash: deviceHash,
+        ip_address: clientIP,
+        user_agent: req.headers['user-agent'] || 'unknown'
+      };
+      const sessionRef = db.ref(`${SESSIONS_PATH}/${sessionId}`);
+      await sessionRef.set(sessionData);
+
+      // Generate token
+      const token = generateToken(userId, sessionId);
+
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = userData;
+
+      return res.status(201).json({
+        success: true,
+        message: 'Account created successfully',
+        user: userWithoutPassword,
+        token: token,
+        session_id: sessionId
       });
+    }
 
-      return res.json({
-        message: 'Portfolio updated successfully',
-        portfolio_url: user.portfolio_url,
-        portfolio
-      });
+    // ============================================
+    // LOGIN - POST /api/auth?action=login
+    // ============================================
+    if (req.method === 'POST' && action === 'login') {
+      const { email, password } = req.body;
 
-    case 'get':
-      // Get current portfolio configuration
-      return res.json({
-        portfolio: user.portfolio || { type: 'none' },
-        portfolio_url: user.portfolio_url
-      });
-
-    case 'disable':
-      // Disable portfolio (set to none type)
-      await userRef.update({
-        'portfolio.type': 'none',
-        'portfolio.content': null,
-        'portfolio.redirect_url': null,
-        'portfolio.last_updated': new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-
-      return res.json({
-        message: 'Portfolio disabled successfully'
-      });
-
-    default:
-      return res.status(400).json({ error: 'Invalid subaction' });
-  }
-}
-
-/**
- * GET PORTFOLIO - Public Portfolio Page
- * GET /api/auth/{user_tag}
- * 
- * Serves different content based on portfolio type:
- * - hosted: Returns HTML content with security headers
- * - redirect: 302 redirect to external URL
- * - none: Returns basic user profile as JSON
- */
-async function handleGetPortfolio(req, res, userTag) {
-  const cleanTag = cleanUserTag(userTag);
-
-  const userRef = db.ref(`ExAuths/users/${cleanTag}`);
-  const userSnapshot = await userRef.once('value');
-  const user = userSnapshot.val();
-
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-
-  const portfolio = user.portfolio || { type: 'none' };
-
-  switch (portfolio.type) {
-    case 'hosted':
-      // Serve HTML content for hosted portfolios
-      if (portfolio.content) {
-        // Set security headers for hosted content
-        res.setHeader('Content-Type', 'text/html');
-        res.setHeader('X-Content-Type-Options', 'nosniff');    // Prevent MIME sniffing
-        res.setHeader('X-Frame-Options', 'DENY');              // Prevent clickjacking
-        
-        // Content Security Policy - Allows scripts, styles, and external resources
-        res.setHeader(
-          'Content-Security-Policy', 
-          "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https:;"
-        );
-
-        return res.send(portfolio.content);
+      if (!email || !password) {
+        return res.status(400).json({ 
+          error: 'Email and password are required' 
+        });
       }
-      return res.status(404).json({ error: 'Portfolio content not found' });
 
-    case 'redirect':
-      // Redirect to external URL
-      if (portfolio.redirect_url) {
-        return res.redirect(302, portfolio.redirect_url);
+      // Check rate limit
+      const rateLimitOK = await checkRateLimit(clientIP, 'login');
+      if (!rateLimitOK) {
+        return res.status(429).json({ 
+          error: 'Too many login attempts. Please try again later.' 
+        });
       }
-      return res.status(404).json({ error: 'Redirect URL not configured' });
 
-    case 'none':
-    default:
-      // Return minimal profile for users without portfolio
-      return res.json({
-        user_tag: user.user_tag,
-        icon: user.icon,
-        description: user.description,
-        portfolio_url: user.portfolio_url,
-        message: 'This user has not set up a portfolio yet'
+      // Find user by email
+      const usersRef = db.ref(USERS_PATH);
+      const snapshot = await usersRef.orderByChild('email').equalTo(email.toLowerCase()).once('value');
+      
+      if (!snapshot.exists()) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      let userData = null;
+      let userId = null;
+      snapshot.forEach((childSnapshot) => {
+        userData = childSnapshot.val();
+        userId = childSnapshot.key;
       });
+
+      if (!userData.is_active) {
+        return res.status(403).json({ error: 'Account is disabled' });
+      }
+
+      // Verify password
+      if (!verifyPassword(password, userData.password)) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      const now = Date.now();
+      const deviceHash = generateDeviceFingerprint(deviceId);
+
+      // Check/Update device
+      const deviceRef = db.ref(`${DEVICES_PATH}/${deviceHash}`);
+      const deviceSnapshot = await deviceRef.once('value');
+      
+      if (deviceSnapshot.exists()) {
+        const deviceData = deviceSnapshot.val();
+        if (!deviceData.user_ids.includes(userId)) {
+          if (deviceData.user_ids.length >= DEVICE_ACCOUNT_LIMIT) {
+            return res.status(403).json({ 
+              error: 'This device has reached the maximum number of accounts' 
+            });
+          }
+          // Add this user to device
+          deviceData.user_ids.push(userId);
+          await deviceRef.update({
+            user_ids: deviceData.user_ids,
+            last_seen: now
+          });
+        }
+      } else {
+        // Register new device
+        await deviceRef.set({
+          device_hash: deviceHash,
+          device_id: deviceId || 'unknown',
+          user_ids: [userId],
+          first_seen: now,
+          last_seen: now,
+          ip_addresses: [clientIP]
+        });
+      }
+
+      // Update IP tracking
+      const ipRef = db.ref(`${DEVICES_PATH}/by_ip/${clientIP.replace(/\./g, '_')}`);
+      const ipSnapshot = await ipRef.once('value');
+      
+      if (ipSnapshot.exists()) {
+        const ipData = ipSnapshot.val();
+        if (!ipData.user_ids.includes(userId)) {
+          ipData.user_ids.push(userId);
+          await ipRef.update({
+            user_ids: ipData.user_ids,
+            last_seen: now
+          });
+        }
+      } else {
+        await ipRef.set({
+          user_ids: [userId],
+          first_seen: now,
+          last_seen: now
+        });
+      }
+
+      // Create session
+      const sessionId = generateSessionId();
+      const sessionData = {
+        user_id: userId,
+        session_id: sessionId,
+        created_at: now,
+        expires_at: now + SESSION_EXPIRY,
+        device_hash: deviceHash,
+        ip_address: clientIP,
+        user_agent: req.headers['user-agent'] || 'unknown'
+      };
+      const sessionRef = db.ref(`${SESSIONS_PATH}/${sessionId}`);
+      await sessionRef.set(sessionData);
+
+      // Update last login
+      const userRef = db.ref(`${USERS_PATH}/${userId}`);
+      await userRef.update({
+        last_login: now,
+        updated_at: now
+      });
+
+      // Generate token
+      const token = generateToken(userId, sessionId);
+
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = userData;
+
+      return res.status(200).json({
+        success: true,
+        message: 'Login successful',
+        user: userWithoutPassword,
+        token: token,
+        session_id: sessionId
+      });
+    }
+
+    // ============================================
+    // VERIFY - GET /api/auth?action=verify
+    // ============================================
+    if ((req.method === 'GET' || req.method === 'POST') && action === 'verify') {
+      const token = req.headers.authorization?.replace('Bearer ', '') || 
+                    req.query.token || 
+                    req.body.token;
+
+      if (!token) {
+        return res.status(401).json({ error: 'Token required' });
+      }
+
+      const decoded = verifyToken(token);
+      if (!decoded) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      }
+
+      const { userId, sessionId } = decoded;
+
+      // Check session exists
+      const sessionRef = db.ref(`${SESSIONS_PATH}/${sessionId}`);
+      const sessionSnapshot = await sessionRef.once('value');
+      
+      if (!sessionSnapshot.exists()) {
+        return res.status(401).json({ error: 'Session expired' });
+      }
+
+      const sessionData = sessionSnapshot.val();
+      if (sessionData.user_id !== userId) {
+        return res.status(401).json({ error: 'Invalid session' });
+      }
+
+      // Check session expiry
+      if (sessionData.expires_at < Date.now()) {
+        await sessionRef.remove();
+        return res.status(401).json({ error: 'Session expired' });
+      }
+
+      // Get user data
+      const userRef = db.ref(`${USERS_PATH}/${userId}`);
+      const userSnapshot = await userRef.once('value');
+      
+      if (!userSnapshot.exists()) {
+        return res.status(401).json({ error: 'User not found' });
+      }
+
+      const userData = userSnapshot.val();
+      const { password: _, ...userWithoutPassword } = userData;
+
+      return res.status(200).json({
+        success: true,
+        user: userWithoutPassword,
+        session_id: sessionId
+      });
+    }
+
+    // ============================================
+    // LOGOUT - POST /api/auth?action=logout
+    // ============================================
+    if (req.method === 'POST' && action === 'logout') {
+      const token = req.headers.authorization?.replace('Bearer ', '') || req.body.token;
+
+      if (!token) {
+        return res.status(401).json({ error: 'Token required' });
+      }
+
+      const decoded = verifyToken(token);
+      if (!decoded) {
+        return res.status(401).json({ error: 'Invalid token' });
+      }
+
+      const { sessionId } = decoded;
+
+      // Delete session
+      const sessionRef = db.ref(`${SESSIONS_PATH}/${sessionId}`);
+      await sessionRef.remove();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Logged out successfully'
+      });
+    }
+
+    // ============================================
+    // CHANGE PASSWORD - PUT /api/auth?action=change-password
+    // ============================================
+    if (req.method === 'PUT' && action === 'change-password') {
+      const token = req.headers.authorization?.replace('Bearer ', '') || req.body.token;
+      const { current_password, new_password } = req.body;
+
+      if (!token) {
+        return res.status(401).json({ error: 'Token required' });
+      }
+
+      if (!current_password || !new_password) {
+        return res.status(400).json({ 
+          error: 'Current password and new password are required' 
+        });
+      }
+
+      if (!validatePassword(new_password)) {
+        return res.status(400).json({ 
+          error: 'Password must be at least 8 characters with letters, numbers, and special characters' 
+        });
+      }
+
+      const decoded = verifyToken(token);
+      if (!decoded) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      }
+
+      const { userId } = decoded;
+
+      // Get user
+      const userRef = db.ref(`${USERS_PATH}/${userId}`);
+      const userSnapshot = await userRef.once('value');
+      
+      if (!userSnapshot.exists()) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const userData = userSnapshot.val();
+
+      // Verify current password
+      if (!verifyPassword(current_password, userData.password)) {
+        return res.status(401).json({ error: 'Current password is incorrect' });
+      }
+
+      // Update password
+      const hashedPassword = hashPassword(new_password);
+      await userRef.update({
+        password: hashedPassword,
+        updated_at: Date.now()
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Password changed successfully'
+      });
+    }
+
+    // ============================================
+    // GET PROFILE - GET /api/auth?action=profile
+    // ============================================
+    if (req.method === 'GET' && action === 'profile') {
+      const token = req.headers.authorization?.replace('Bearer ', '') || req.query.token;
+
+      if (!token) {
+        return res.status(401).json({ error: 'Token required' });
+      }
+
+      const decoded = verifyToken(token);
+      if (!decoded) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      }
+
+      const { userId } = decoded;
+
+      // Get user
+      const userRef = db.ref(`${USERS_PATH}/${userId}`);
+      const userSnapshot = await userRef.once('value');
+      
+      if (!userSnapshot.exists()) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const userData = userSnapshot.val();
+      const { password: _, ...userWithoutPassword } = userData;
+
+      return res.status(200).json({
+        success: true,
+        user: userWithoutPassword
+      });
+    }
+
+    // ============================================
+    // UPDATE PROFILE - PUT /api/auth?action=profile
+    // ============================================
+    if (req.method === 'PUT' && action === 'profile') {
+      const token = req.headers.authorization?.replace('Bearer ', '') || req.body.token;
+      const { displayName, bio, avatar } = req.body;
+
+      if (!token) {
+        return res.status(401).json({ error: 'Token required' });
+      }
+
+      const decoded = verifyToken(token);
+      if (!decoded) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      }
+
+      const { userId } = decoded;
+
+      // Get user
+      const userRef = db.ref(`${USERS_PATH}/${userId}`);
+      const userSnapshot = await userRef.once('value');
+      
+      if (!userSnapshot.exists()) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Update profile
+      const updates = {
+        updated_at: Date.now()
+      };
+
+      if (displayName) {
+        updates['profile/displayName'] = displayName;
+      }
+      if (bio !== undefined) {
+        updates['profile/bio'] = bio;
+      }
+      if (avatar !== undefined) {
+        updates['profile/avatar'] = avatar;
+      }
+
+      await userRef.update(updates);
+
+      // Get updated user data
+      const updatedSnapshot = await userRef.once('value');
+      const userData = updatedSnapshot.val();
+      const { password: _, ...userWithoutPassword } = userData;
+
+      return res.status(200).json({
+        success: true,
+        message: 'Profile updated successfully',
+        user: userWithoutPassword
+      });
+    }
+
+    // ============================================
+    // DELETE ACCOUNT - DELETE /api/auth?action=delete
+    // ============================================
+    if (req.method === 'DELETE' && action === 'delete') {
+      const token = req.headers.authorization?.replace('Bearer ', '') || req.query.token;
+
+      if (!token) {
+        return res.status(401).json({ error: 'Token required' });
+      }
+
+      const decoded = verifyToken(token);
+      if (!decoded) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      }
+
+      const { userId, sessionId } = decoded;
+
+      // Get user data
+      const userRef = db.ref(`${USERS_PATH}/${userId}`);
+      const userSnapshot = await userRef.once('value');
+      
+      if (!userSnapshot.exists()) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const userData = userSnapshot.val();
+
+      // Delete user
+      await userRef.remove();
+
+      // Delete session
+      await db.ref(`${SESSIONS_PATH}/${sessionId}`).remove();
+
+      // Remove from device
+      const deviceHash = generateDeviceFingerprint(userData.metadata?.device_id);
+      const deviceRef = db.ref(`${DEVICES_PATH}/${deviceHash}`);
+      const deviceSnapshot = await deviceRef.once('value');
+      
+      if (deviceSnapshot.exists()) {
+        const deviceData = deviceSnapshot.val();
+        deviceData.user_ids = (deviceData.user_ids || []).filter(id => id !== userId);
+        if (deviceData.user_ids.length === 0) {
+          await deviceRef.remove();
+        } else {
+          await deviceRef.update({ user_ids: deviceData.user_ids });
+        }
+      }
+
+      // Remove from IP
+      const ipRef = db.ref(`${DEVICES_PATH}/by_ip/${(userData.metadata?.ip || 'unknown').replace(/\./g, '_')}`);
+      const ipSnapshot = await ipRef.once('value');
+      
+      if (ipSnapshot.exists()) {
+        const ipData = ipSnapshot.val();
+        ipData.user_ids = (ipData.user_ids || []).filter(id => id !== userId);
+        if (ipData.user_ids.length === 0) {
+          await ipRef.remove();
+        } else {
+          await ipRef.update({ user_ids: ipData.user_ids });
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Account deleted successfully'
+      });
+    }
+
+    // ============================================
+    // CHECK USERNAME - GET /api/auth?action=check-username&username=xxx
+    // ============================================
+    if (req.method === 'GET' && action === 'check-username') {
+      const { username } = req.query;
+
+      if (!username) {
+        return res.status(400).json({ error: 'Username required' });
+      }
+
+      if (!validateUsername(username)) {
+        return res.status(400).json({ 
+          error: 'Username must be 3-20 characters (letters, numbers, underscore only)' 
+        });
+      }
+
+      const usersRef = db.ref(USERS_PATH);
+      const snapshot = await usersRef.orderByChild('username').equalTo(username).once('value');
+      
+      let exists = false;
+      snapshot.forEach(() => { exists = true; });
+      
+      return res.status(200).json({
+        success: true,
+        available: !exists,
+        username: username
+      });
+    }
+
+    // ============================================
+    // CHECK EMAIL - GET /api/auth?action=check-email&email=xxx
+    // ============================================
+    if (req.method === 'GET' && action === 'check-email') {
+      const { email } = req.query;
+
+      if (!email) {
+        return res.status(400).json({ error: 'Email required' });
+      }
+
+      if (!validateEmail(email)) {
+        return res.status(400).json({ error: 'Invalid email format' });
+      }
+
+      const usersRef = db.ref(USERS_PATH);
+      const snapshot = await usersRef.orderByChild('email').equalTo(email.toLowerCase()).once('value');
+      
+      let exists = false;
+      snapshot.forEach(() => { exists = true; });
+      
+      return res.status(200).json({
+        success: true,
+        available: !exists,
+        email: email
+      });
+    }
+
+    // ============================================
+    // GET DEVICES - GET /api/auth?action=devices
+    // ============================================
+    if (req.method === 'GET' && action === 'devices') {
+      const token = req.headers.authorization?.replace('Bearer ', '') || req.query.token;
+
+      if (!token) {
+        return res.status(401).json({ error: 'Token required' });
+      }
+
+      const decoded = verifyToken(token);
+      if (!decoded) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      }
+
+      const { userId, sessionId } = decoded;
+
+      // Get all sessions for user
+      const sessionsRef = db.ref(SESSIONS_PATH);
+      const snapshot = await sessionsRef.orderByChild('user_id').equalTo(userId).once('value');
+      
+      const sessions = [];
+      if (snapshot.exists()) {
+        snapshot.forEach((childSnapshot) => {
+          const sessionData = childSnapshot.val();
+          sessions.push({
+            session_id: sessionData.session_id,
+            created_at: sessionData.created_at,
+            expires_at: sessionData.expires_at,
+            device_hash: sessionData.device_hash,
+            ip_address: sessionData.ip_address,
+            user_agent: sessionData.user_agent,
+            is_current: sessionData.session_id === sessionId
+          });
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        sessions: sessions,
+        current_session: sessionId
+      });
+    }
+
+    // ============================================
+    // REVOKE SESSION - DELETE /api/auth?action=revoke-session&session_id=xxx
+    // ============================================
+    if (req.method === 'DELETE' && action === 'revoke-session') {
+      const token = req.headers.authorization?.replace('Bearer ', '') || req.query.token;
+      const { session_id } = req.query;
+
+      if (!token || !session_id) {
+        return res.status(400).json({ 
+          error: 'Token and session_id are required' 
+        });
+      }
+
+      const decoded = verifyToken(token);
+      if (!decoded) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      }
+
+      const { userId } = decoded;
+
+      // Verify session belongs to user
+      const sessionRef = db.ref(`${SESSIONS_PATH}/${session_id}`);
+      const sessionSnapshot = await sessionRef.once('value');
+      
+      if (!sessionSnapshot.exists()) {
+        return res.status(404).json({ error: 'Session not found' });
+      }
+
+      const sessionData = sessionSnapshot.val();
+      if (sessionData.user_id !== userId) {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+
+      // Can't revoke current session
+      if (session_id === decoded.sessionId) {
+        return res.status(400).json({ 
+          error: 'Cannot revoke current session. Use logout instead.' 
+        });
+      }
+
+      await sessionRef.remove();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Session revoked successfully'
+      });
+    }
+
+    // ============================================
+    // 404 - Action not found
+    // ============================================
+    return res.status(404).json({ 
+      error: 'Action not found',
+      available_actions: [
+        'register', 'login', 'verify', 'logout', 
+        'profile', 'change-password', 'delete',
+        'check-username', 'check-email', 
+        'devices', 'revoke-session'
+      ]
+    });
+
+  } catch (error) {
+    console.error('Auth API Error:', error);
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
-}
-
-/**
- * GET PUBLIC PROFILE - Public Profile Data
- * GET /api/auth?action=profile&user_tag={tag}
- * 
- * Returns user profile data for portfolio pages (without hosted content)
- * Used by frontend to display user information and portfolio configuration
- */
-async function handleGetPublicProfile(req, res) {
-  const { user_tag } = req.query;
-
-  if (!user_tag) {
-    return res.status(400).json({ error: 'User tag required' });
-  }
-
-  const cleanTag = cleanUserTag(user_tag);
-  const userRef = db.ref(`ExAuths/users/${cleanTag}`);
-  const userSnapshot = await userRef.once('value');
-  const user = userSnapshot.val();
-
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-
-  // Return public profile data
-  // Content is null for security (hosted content is served via separate endpoint)
-  return res.json({
-    // Basic user information
-    user_tag: user.user_tag,
-    userId: user.userId,
-    icon: user.icon,
-    description: user.description,
-    portfolio_url: user.portfolio_url,
-    created_at: user.created_at,
-
-    // Portfolio configuration (without actual content)
-    portfolio: {
-      type: user.portfolio?.type || 'none',
-      content: null,  // Not exposed for security
-      redirect_url: user.portfolio?.type === 'redirect' ? user.portfolio?.redirect_url : null
-    },
-
-    // Status message
-    message: user.portfolio?.type === 'none' ? 'This user has a minimal profile' : 'Portfolio configured'
-  });
 }
