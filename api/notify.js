@@ -31,6 +31,11 @@ function getUserAgent(req) {
   return req.headers['user-agent'] || 'unknown';
 }
 
+// Safe body parser helper
+function getBody(req) {
+  return req.body || {};
+}
+
 // Validate notification data
 function validateNotificationData(title, body) {
   if (!title || !title.trim()) {
@@ -174,9 +179,21 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const action = req.query.action || req.body.action;
+  // ✅ FIXED: Safe extraction with optional chaining
+  const body = getBody(req);
+  const action = req.query.action || body.action || null;
   const clientIP = getClientIP(req);
   const userAgent = getUserAgent(req);
+
+  // ✅ FIXED: Validate action exists for methods that need it
+  if (!action && ['POST', 'PUT', 'DELETE'].includes(req.method)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Missing action parameter',
+      message: 'Please provide an action in the query string or request body',
+      hint: 'Example: ?action=subscribe or { "action": "send-topic" }'
+    });
+  }
 
   // ============================================
   // Health Check
@@ -211,15 +228,21 @@ export default async function handler(req, res) {
     // SEND TO TOPIC - POST ?action=send-topic
     // ============================================
     if (req.method === 'POST' && action === 'send-topic') {
-      const { title, body, topic = DEFAULT_TOPIC, imageUrl, link, extra } = req.body;
+      const { title, body, topic = DEFAULT_TOPIC, imageUrl, link, extra } = body;
 
       const validation = validateNotificationData(title, body);
       if (!validation.valid) {
-        return res.status(400).json({ error: validation.error });
+        return res.status(400).json({ 
+          success: false,
+          error: validation.error 
+        });
       }
 
       if (!validateTopic(topic)) {
-        return res.status(400).json({ error: 'Invalid topic name' });
+        return res.status(400).json({ 
+          success: false,
+          error: 'Invalid topic name' 
+        });
       }
 
       // Get users subscribed to this topic
@@ -254,21 +277,28 @@ export default async function handler(req, res) {
     // SEND TO USER - POST ?action=send-user
     // ============================================
     if (req.method === 'POST' && action === 'send-user') {
-      const { user_id, title, body, imageUrl, link, extra } = req.body;
+      const { user_id, title, body, imageUrl, link, extra } = body;
 
       if (!user_id) {
-        return res.status(400).json({ error: 'user_id is required' });
+        return res.status(400).json({ 
+          success: false,
+          error: 'user_id is required' 
+        });
       }
 
       const validation = validateNotificationData(title, body);
       if (!validation.valid) {
-        return res.status(400).json({ error: validation.error });
+        return res.status(400).json({ 
+          success: false,
+          error: validation.error 
+        });
       }
 
       // Check if user has a token
       const token = await getUserToken(user_id);
       if (!token) {
         return res.status(404).json({ 
+          success: false,
           error: 'User not found or has no device token' 
         });
       }
@@ -298,11 +328,14 @@ export default async function handler(req, res) {
     // SEND TO ALL - POST ?action=send-all
     // ============================================
     if (req.method === 'POST' && action === 'send-all') {
-      const { title, body, imageUrl, link, extra } = req.body;
+      const { title, body, imageUrl, link, extra } = body;
 
       const validation = validateNotificationData(title, body);
       if (!validation.valid) {
-        return res.status(400).json({ error: validation.error });
+        return res.status(400).json({ 
+          success: false,
+          error: validation.error 
+        });
       }
 
       // Get all users with tokens
@@ -337,10 +370,11 @@ export default async function handler(req, res) {
     // SUBSCRIBE - POST ?action=subscribe
     // ============================================
     if (req.method === 'POST' && action === 'subscribe') {
-      const { user_id, token, topic, topics } = req.body;
+      const { user_id, token, topic, topics } = body;
 
       if (!user_id || !token) {
         return res.status(400).json({ 
+          success: false,
           error: 'user_id and token are required' 
         });
       }
@@ -363,6 +397,7 @@ export default async function handler(req, res) {
       const invalidTopics = finalTopics.filter(t => !validateTopic(t));
       if (invalidTopics.length > 0) {
         return res.status(400).json({
+          success: false,
           error: 'Invalid topic names',
           invalid_topics: invalidTopics
         });
@@ -410,15 +445,21 @@ export default async function handler(req, res) {
     // UNSUBSCRIBE - POST ?action=unsubscribe
     // ============================================
     if (req.method === 'POST' && action === 'unsubscribe') {
-      const { user_id, topics } = req.body;
+      const { user_id, topics } = body;
 
       if (!user_id) {
-        return res.status(400).json({ error: 'user_id is required' });
+        return res.status(400).json({ 
+          success: false,
+          error: 'user_id is required' 
+        });
       }
 
       const snap = await db.ref(`${NOTIFICATIONS_PATH}/${user_id}`).once('value');
       if (!snap.exists()) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ 
+          success: false,
+          error: 'User not found' 
+        });
       }
 
       const userData = snap.val();
@@ -462,7 +503,10 @@ export default async function handler(req, res) {
       const { user_id, limit = NOTIFICATION_HISTORY_LIMIT, offset = 0, sort = 'desc', delivery_type } = req.query;
 
       if (!user_id) {
-        return res.status(400).json({ error: 'user_id is required' });
+        return res.status(400).json({ 
+          success: false,
+          error: 'user_id is required' 
+        });
       }
 
       const snapshot = await db.ref(`${NOTIFICATION_HISTORY_PATH}/${user_id}`).once('value');
@@ -514,13 +558,17 @@ export default async function handler(req, res) {
 
       if (!user_id || !notification_id) {
         return res.status(400).json({ 
+          success: false,
           error: 'user_id and notification_id are required' 
         });
       }
 
       const snapshot = await db.ref(`${NOTIFICATION_HISTORY_PATH}/${user_id}/${notification_id}`).once('value');
       if (!snapshot.exists()) {
-        return res.status(404).json({ error: 'Notification not found' });
+        return res.status(404).json({ 
+          success: false,
+          error: 'Notification not found' 
+        });
       }
 
       // Mark as read
@@ -543,13 +591,17 @@ export default async function handler(req, res) {
 
       if (!user_id || !notification_id) {
         return res.status(400).json({ 
+          success: false,
           error: 'user_id and notification_id are required' 
         });
       }
 
       const snapshot = await db.ref(`${NOTIFICATION_HISTORY_PATH}/${user_id}/${notification_id}`).once('value');
       if (!snapshot.exists()) {
-        return res.status(404).json({ error: 'Notification not found' });
+        return res.status(404).json({ 
+          success: false,
+          error: 'Notification not found' 
+        });
       }
 
       await db.ref(`${NOTIFICATION_HISTORY_PATH}/${user_id}/${notification_id}/read`).set(true);
@@ -568,7 +620,10 @@ export default async function handler(req, res) {
       const { user_id } = req.query;
 
       if (!user_id) {
-        return res.status(400).json({ error: 'user_id is required' });
+        return res.status(400).json({ 
+          success: false,
+          error: 'user_id is required' 
+        });
       }
 
       const snapshot = await db.ref(`${NOTIFICATION_HISTORY_PATH}/${user_id}`).once('value');
@@ -602,13 +657,17 @@ export default async function handler(req, res) {
 
       if (!user_id || !notification_id) {
         return res.status(400).json({ 
+          success: false,
           error: 'user_id and notification_id are required' 
         });
       }
 
       const snapshot = await db.ref(`${NOTIFICATION_HISTORY_PATH}/${user_id}/${notification_id}`).once('value');
       if (!snapshot.exists()) {
-        return res.status(404).json({ error: 'Notification not found' });
+        return res.status(404).json({ 
+          success: false,
+          error: 'Notification not found' 
+        });
       }
 
       await db.ref(`${NOTIFICATION_HISTORY_PATH}/${user_id}/${notification_id}`).remove();
@@ -627,7 +686,10 @@ export default async function handler(req, res) {
       const { user_id, all } = req.query;
 
       if (!user_id) {
-        return res.status(400).json({ error: 'user_id is required' });
+        return res.status(400).json({ 
+          success: false,
+          error: 'user_id is required' 
+        });
       }
 
       if (all === 'true') {
@@ -640,6 +702,7 @@ export default async function handler(req, res) {
       }
 
       return res.status(400).json({ 
+        success: false,
         error: 'Set all=true to delete all history' 
       });
     }
@@ -651,7 +714,10 @@ export default async function handler(req, res) {
       const { user_id } = req.query;
 
       if (!user_id) {
-        return res.status(400).json({ error: 'user_id is required' });
+        return res.status(400).json({ 
+          success: false,
+          error: 'user_id is required' 
+        });
       }
 
       const snapshot = await db.ref(`${NOTIFICATION_HISTORY_PATH}/${user_id}`).once('value');
@@ -685,7 +751,10 @@ export default async function handler(req, res) {
       const { user_id } = req.query;
 
       if (!user_id) {
-        return res.status(400).json({ error: 'user_id is required' });
+        return res.status(400).json({ 
+          success: false,
+          error: 'user_id is required' 
+        });
       }
 
       const snapshot = await db.ref(`${NOTIFICATION_HISTORY_PATH}/${user_id}`).once('value');
@@ -707,7 +776,10 @@ export default async function handler(req, res) {
       const { user_id } = req.query;
 
       if (!user_id) {
-        return res.status(400).json({ error: 'user_id is required' });
+        return res.status(400).json({ 
+          success: false,
+          error: 'user_id is required' 
+        });
       }
 
       const snapshot = await db.ref(`${NOTIFICATIONS_PATH}/${user_id}`).once('value');
@@ -735,12 +807,18 @@ export default async function handler(req, res) {
       const { user_id } = req.query;
 
       if (!user_id) {
-        return res.status(400).json({ error: 'user_id is required' });
+        return res.status(400).json({ 
+          success: false,
+          error: 'user_id is required' 
+        });
       }
 
       const snapshot = await db.ref(`${NOTIFICATIONS_PATH}/${user_id}`).once('value');
       if (!snapshot.exists()) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ 
+          success: false,
+          error: 'User not found' 
+        });
       }
 
       return res.status(200).json({
@@ -754,7 +832,7 @@ export default async function handler(req, res) {
     // MIGRATE USERS - POST ?action=migrate
     // ============================================
     if (req.method === 'POST' && action === 'migrate') {
-      const { from_topic, to_topic } = req.body;
+      const { from_topic, to_topic } = body;
 
       const sourceTopic = from_topic || DEFAULT_TOPIC;
       const targetTopic = to_topic || DEFAULT_TOPIC;
@@ -805,7 +883,10 @@ export default async function handler(req, res) {
       const { topic } = req.query;
 
       if (!topic) {
-        return res.status(400).json({ error: 'topic is required' });
+        return res.status(400).json({ 
+          success: false,
+          error: 'topic is required' 
+        });
       }
 
       const userIds = await getUsersByTopic(topic);
@@ -822,6 +903,7 @@ export default async function handler(req, res) {
     // 404 - Action not found
     // ============================================
     return res.status(404).json({
+      success: false,
       error: 'Action not found',
       available_actions: [
         'send-topic',
@@ -845,6 +927,7 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Notifications API Error:', error);
     return res.status(500).json({
+      success: false,
       error: 'Internal server error',
       message: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
