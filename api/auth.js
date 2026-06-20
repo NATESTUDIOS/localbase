@@ -106,6 +106,11 @@ function getClientIP(req) {
          'unknown';
 }
 
+// Safe body parser helper
+function getBody(req) {
+  return req.body || {};
+}
+
 // Rate limiting helper
 async function checkRateLimit(ip, action) {
   const rateLimitRef = db.ref(`RateLimits/${action}/${ip.replace(/\./g, '_')}`);
@@ -147,9 +152,21 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const action = req.query.action || req.body.action;
+  // ✅ FIXED: Safe extraction with optional chaining
+  const body = getBody(req);
+  const action = req.query.action || body.action || null;
   const clientIP = getClientIP(req);
-  const deviceId = req.body.device_id || req.query.device_id || req.headers['x-device-id'];
+  const deviceId = body.device_id || req.query.device_id || req.headers['x-device-id'];
+
+  // ✅ FIXED: Validate action exists for methods that need it
+  if (!action && ['POST', 'PUT', 'DELETE'].includes(req.method)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Missing action parameter',
+      message: 'Please provide an action in the query string or request body',
+      hint: 'Example: ?action=register or { "action": "login" }'
+    });
+  }
 
   // ============================================
   // PUBLIC: Health Check
@@ -167,27 +184,33 @@ export default async function handler(req, res) {
     // REGISTER - POST /api/auth?action=register
     // ============================================
     if (req.method === 'POST' && action === 'register') {
-      const { email, password, username } = req.body;
+      const { email, password, username } = body;
 
       // Validate input
       if (!email || !password || !username) {
         return res.status(400).json({ 
+          success: false,
           error: 'Email, password, and username are required' 
         });
       }
 
       if (!validateEmail(email)) {
-        return res.status(400).json({ error: 'Invalid email format' });
+        return res.status(400).json({ 
+          success: false,
+          error: 'Invalid email format' 
+        });
       }
 
       if (!validatePassword(password)) {
         return res.status(400).json({ 
+          success: false,
           error: 'Password must be at least 8 characters with letters, numbers, and special characters' 
         });
       }
 
       if (!validateUsername(username)) {
         return res.status(400).json({ 
+          success: false,
           error: 'Username must be 3-20 characters (letters, numbers, underscore only)' 
         });
       }
@@ -196,6 +219,7 @@ export default async function handler(req, res) {
       const rateLimitOK = await checkRateLimit(clientIP, 'register');
       if (!rateLimitOK) {
         return res.status(429).json({ 
+          success: false,
           error: 'Too many registration attempts. Please try again later.' 
         });
       }
@@ -208,7 +232,10 @@ export default async function handler(req, res) {
       emailSnapshot.forEach(() => { emailExists = true; });
       
       if (emailExists) {
-        return res.status(409).json({ error: 'Email already registered' });
+        return res.status(409).json({ 
+          success: false,
+          error: 'Email already registered' 
+        });
       }
 
       // Check if username already exists
@@ -218,7 +245,10 @@ export default async function handler(req, res) {
       usernameSnapshot.forEach(() => { usernameExists = true; });
       
       if (usernameExists) {
-        return res.status(409).json({ error: 'Username already taken' });
+        return res.status(409).json({ 
+          success: false,
+          error: 'Username already taken' 
+        });
       }
 
       // Check device limit (one account per device)
@@ -230,6 +260,7 @@ export default async function handler(req, res) {
         const deviceData = deviceSnapshot.val();
         if (deviceData.user_ids && deviceData.user_ids.length >= DEVICE_ACCOUNT_LIMIT) {
           return res.status(403).json({ 
+            success: false,
             error: 'This device already has an account. One account per device allowed.' 
           });
         }
@@ -243,6 +274,7 @@ export default async function handler(req, res) {
         const ipData = ipSnapshot.val();
         if (ipData.user_ids && ipData.user_ids.length >= IP_ACCOUNT_LIMIT) {
           return res.status(403).json({ 
+            success: false,
             error: `Too many accounts from this IP address (max ${IP_ACCOUNT_LIMIT})` 
           });
         }
@@ -332,10 +364,11 @@ export default async function handler(req, res) {
     // LOGIN - POST /api/auth?action=login
     // ============================================
     if (req.method === 'POST' && action === 'login') {
-      const { email, password } = req.body;
+      const { email, password } = body;
 
       if (!email || !password) {
         return res.status(400).json({ 
+          success: false,
           error: 'Email and password are required' 
         });
       }
@@ -344,6 +377,7 @@ export default async function handler(req, res) {
       const rateLimitOK = await checkRateLimit(clientIP, 'login');
       if (!rateLimitOK) {
         return res.status(429).json({ 
+          success: false,
           error: 'Too many login attempts. Please try again later.' 
         });
       }
@@ -353,7 +387,10 @@ export default async function handler(req, res) {
       const snapshot = await usersRef.orderByChild('email').equalTo(email.toLowerCase()).once('value');
       
       if (!snapshot.exists()) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Invalid credentials' 
+        });
       }
 
       let userData = null;
@@ -364,12 +401,18 @@ export default async function handler(req, res) {
       });
 
       if (!userData.is_active) {
-        return res.status(403).json({ error: 'Account is disabled' });
+        return res.status(403).json({ 
+          success: false,
+          error: 'Account is disabled' 
+        });
       }
 
       // Verify password
       if (!verifyPassword(password, userData.password)) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Invalid credentials' 
+        });
       }
 
       const now = Date.now();
@@ -384,6 +427,7 @@ export default async function handler(req, res) {
         if (!deviceData.user_ids.includes(userId)) {
           if (deviceData.user_ids.length >= DEVICE_ACCOUNT_LIMIT) {
             return res.status(403).json({ 
+              success: false,
               error: 'This device has reached the maximum number of accounts' 
             });
           }
@@ -469,15 +513,21 @@ export default async function handler(req, res) {
     if ((req.method === 'GET' || req.method === 'POST') && action === 'verify') {
       const token = req.headers.authorization?.replace('Bearer ', '') || 
                     req.query.token || 
-                    req.body.token;
+                    body.token;
 
       if (!token) {
-        return res.status(401).json({ error: 'Token required' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Token required' 
+        });
       }
 
       const decoded = verifyToken(token);
       if (!decoded) {
-        return res.status(401).json({ error: 'Invalid or expired token' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Invalid or expired token' 
+        });
       }
 
       const { userId, sessionId } = decoded;
@@ -487,18 +537,27 @@ export default async function handler(req, res) {
       const sessionSnapshot = await sessionRef.once('value');
       
       if (!sessionSnapshot.exists()) {
-        return res.status(401).json({ error: 'Session expired' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Session expired' 
+        });
       }
 
       const sessionData = sessionSnapshot.val();
       if (sessionData.user_id !== userId) {
-        return res.status(401).json({ error: 'Invalid session' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Invalid session' 
+        });
       }
 
       // Check session expiry
       if (sessionData.expires_at < Date.now()) {
         await sessionRef.remove();
-        return res.status(401).json({ error: 'Session expired' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Session expired' 
+        });
       }
 
       // Get user data
@@ -506,7 +565,10 @@ export default async function handler(req, res) {
       const userSnapshot = await userRef.once('value');
       
       if (!userSnapshot.exists()) {
-        return res.status(401).json({ error: 'User not found' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'User not found' 
+        });
       }
 
       const userData = userSnapshot.val();
@@ -523,15 +585,21 @@ export default async function handler(req, res) {
     // LOGOUT - POST /api/auth?action=logout
     // ============================================
     if (req.method === 'POST' && action === 'logout') {
-      const token = req.headers.authorization?.replace('Bearer ', '') || req.body.token;
+      const token = req.headers.authorization?.replace('Bearer ', '') || body.token;
 
       if (!token) {
-        return res.status(401).json({ error: 'Token required' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Token required' 
+        });
       }
 
       const decoded = verifyToken(token);
       if (!decoded) {
-        return res.status(401).json({ error: 'Invalid token' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Invalid token' 
+        });
       }
 
       const { sessionId } = decoded;
@@ -550,28 +618,36 @@ export default async function handler(req, res) {
     // CHANGE PASSWORD - PUT /api/auth?action=change-password
     // ============================================
     if (req.method === 'PUT' && action === 'change-password') {
-      const token = req.headers.authorization?.replace('Bearer ', '') || req.body.token;
-      const { current_password, new_password } = req.body;
+      const token = req.headers.authorization?.replace('Bearer ', '') || body.token;
+      const { current_password, new_password } = body;
 
       if (!token) {
-        return res.status(401).json({ error: 'Token required' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Token required' 
+        });
       }
 
       if (!current_password || !new_password) {
         return res.status(400).json({ 
+          success: false,
           error: 'Current password and new password are required' 
         });
       }
 
       if (!validatePassword(new_password)) {
         return res.status(400).json({ 
+          success: false,
           error: 'Password must be at least 8 characters with letters, numbers, and special characters' 
         });
       }
 
       const decoded = verifyToken(token);
       if (!decoded) {
-        return res.status(401).json({ error: 'Invalid or expired token' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Invalid or expired token' 
+        });
       }
 
       const { userId } = decoded;
@@ -581,14 +657,20 @@ export default async function handler(req, res) {
       const userSnapshot = await userRef.once('value');
       
       if (!userSnapshot.exists()) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ 
+          success: false,
+          error: 'User not found' 
+        });
       }
 
       const userData = userSnapshot.val();
 
       // Verify current password
       if (!verifyPassword(current_password, userData.password)) {
-        return res.status(401).json({ error: 'Current password is incorrect' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Current password is incorrect' 
+        });
       }
 
       // Update password
@@ -611,12 +693,18 @@ export default async function handler(req, res) {
       const token = req.headers.authorization?.replace('Bearer ', '') || req.query.token;
 
       if (!token) {
-        return res.status(401).json({ error: 'Token required' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Token required' 
+        });
       }
 
       const decoded = verifyToken(token);
       if (!decoded) {
-        return res.status(401).json({ error: 'Invalid or expired token' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Invalid or expired token' 
+        });
       }
 
       const { userId } = decoded;
@@ -626,7 +714,10 @@ export default async function handler(req, res) {
       const userSnapshot = await userRef.once('value');
       
       if (!userSnapshot.exists()) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ 
+          success: false,
+          error: 'User not found' 
+        });
       }
 
       const userData = userSnapshot.val();
@@ -642,16 +733,22 @@ export default async function handler(req, res) {
     // UPDATE PROFILE - PUT /api/auth?action=profile
     // ============================================
     if (req.method === 'PUT' && action === 'profile') {
-      const token = req.headers.authorization?.replace('Bearer ', '') || req.body.token;
-      const { displayName, bio, avatar } = req.body;
+      const token = req.headers.authorization?.replace('Bearer ', '') || body.token;
+      const { displayName, bio, avatar } = body;
 
       if (!token) {
-        return res.status(401).json({ error: 'Token required' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Token required' 
+        });
       }
 
       const decoded = verifyToken(token);
       if (!decoded) {
-        return res.status(401).json({ error: 'Invalid or expired token' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Invalid or expired token' 
+        });
       }
 
       const { userId } = decoded;
@@ -661,7 +758,10 @@ export default async function handler(req, res) {
       const userSnapshot = await userRef.once('value');
       
       if (!userSnapshot.exists()) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ 
+          success: false,
+          error: 'User not found' 
+        });
       }
 
       // Update profile
@@ -700,12 +800,18 @@ export default async function handler(req, res) {
       const token = req.headers.authorization?.replace('Bearer ', '') || req.query.token;
 
       if (!token) {
-        return res.status(401).json({ error: 'Token required' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Token required' 
+        });
       }
 
       const decoded = verifyToken(token);
       if (!decoded) {
-        return res.status(401).json({ error: 'Invalid or expired token' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Invalid or expired token' 
+        });
       }
 
       const { userId, sessionId } = decoded;
@@ -715,7 +821,10 @@ export default async function handler(req, res) {
       const userSnapshot = await userRef.once('value');
       
       if (!userSnapshot.exists()) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ 
+          success: false,
+          error: 'User not found' 
+        });
       }
 
       const userData = userSnapshot.val();
@@ -768,11 +877,15 @@ export default async function handler(req, res) {
       const { username } = req.query;
 
       if (!username) {
-        return res.status(400).json({ error: 'Username required' });
+        return res.status(400).json({ 
+          success: false,
+          error: 'Username required' 
+        });
       }
 
       if (!validateUsername(username)) {
         return res.status(400).json({ 
+          success: false,
           error: 'Username must be 3-20 characters (letters, numbers, underscore only)' 
         });
       }
@@ -797,11 +910,17 @@ export default async function handler(req, res) {
       const { email } = req.query;
 
       if (!email) {
-        return res.status(400).json({ error: 'Email required' });
+        return res.status(400).json({ 
+          success: false,
+          error: 'Email required' 
+        });
       }
 
       if (!validateEmail(email)) {
-        return res.status(400).json({ error: 'Invalid email format' });
+        return res.status(400).json({ 
+          success: false,
+          error: 'Invalid email format' 
+        });
       }
 
       const usersRef = db.ref(USERS_PATH);
@@ -824,12 +943,18 @@ export default async function handler(req, res) {
       const token = req.headers.authorization?.replace('Bearer ', '') || req.query.token;
 
       if (!token) {
-        return res.status(401).json({ error: 'Token required' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Token required' 
+        });
       }
 
       const decoded = verifyToken(token);
       if (!decoded) {
-        return res.status(401).json({ error: 'Invalid or expired token' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Invalid or expired token' 
+        });
       }
 
       const { userId, sessionId } = decoded;
@@ -870,13 +995,17 @@ export default async function handler(req, res) {
 
       if (!token || !session_id) {
         return res.status(400).json({ 
+          success: false,
           error: 'Token and session_id are required' 
         });
       }
 
       const decoded = verifyToken(token);
       if (!decoded) {
-        return res.status(401).json({ error: 'Invalid or expired token' });
+        return res.status(401).json({ 
+          success: false,
+          error: 'Invalid or expired token' 
+        });
       }
 
       const { userId } = decoded;
@@ -886,17 +1015,24 @@ export default async function handler(req, res) {
       const sessionSnapshot = await sessionRef.once('value');
       
       if (!sessionSnapshot.exists()) {
-        return res.status(404).json({ error: 'Session not found' });
+        return res.status(404).json({ 
+          success: false,
+          error: 'Session not found' 
+        });
       }
 
       const sessionData = sessionSnapshot.val();
       if (sessionData.user_id !== userId) {
-        return res.status(403).json({ error: 'Unauthorized' });
+        return res.status(403).json({ 
+          success: false,
+          error: 'Unauthorized' 
+        });
       }
 
       // Can't revoke current session
       if (session_id === decoded.sessionId) {
         return res.status(400).json({ 
+          success: false,
           error: 'Cannot revoke current session. Use logout instead.' 
         });
       }
@@ -913,6 +1049,7 @@ export default async function handler(req, res) {
     // 404 - Action not found
     // ============================================
     return res.status(404).json({ 
+      success: false,
       error: 'Action not found',
       available_actions: [
         'register', 'login', 'verify', 'logout', 
@@ -925,6 +1062,7 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Auth API Error:', error);
     return res.status(500).json({ 
+      success: false,
       error: 'Internal server error',
       message: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
