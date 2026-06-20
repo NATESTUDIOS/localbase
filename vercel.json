@@ -5,70 +5,14 @@
     { "src": "public/**", "use": "@vercel/static" }
   ],
   "routes": [
-  
+
     {
-      "src": "^/host/([^/]+)/([^/]+)/([^/]+)$",
-      "dest": "/api/host?user_id=$1&key=$2&filename=$3",
-      "methods": ["GET"]
-    },
-    {
-      "src": "^/host/([^/]+)/([^/]+)$",
-      "dest": "/api/host?user_id=$1&key=$2",
-      "methods": ["GET"]
-    },
-    {
-      "src": "^/portfolio/([^/]+)/([^/]+)$",
-      "dest": "/api/projects.js?user_tag=$1&project_slug=$2",
-      "methods": ["GET"]
-    },
-    {
-      "src": "^/portfolio/([^/]+)$",
-      "dest": "/api/auth.js?user_tag=$1",
-      "methods": ["GET"]
-    },
-    {
-      "src": "^/$",
-      "dest": "/public/index.html"
-    },
-    {
-      "src": "^/([^/]+)/$",
-      "dest": "/public/$1/index.html"
-    },
-    {
-      "src": "^/([^/]+)$",
-      "dest": "/public/$1.html"
+      "src": "^/api/(.*)$",
+      "dest": "/api/$1.js"
     },
     {
       "src": "^/(.*)$",
       "dest": "/public/$1"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
-        }
-      ]
-    },
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
-        }
-      ]
     }
   ]
 }
