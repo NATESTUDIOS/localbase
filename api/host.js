@@ -3,7 +3,7 @@ import { db } from "../utils/firebase.js";
 // ============================================
 // Configuration
 // ============================================
-const ALLOWED_EXTENSIONS = ['html', 'css', 'js', 'txt', 'json'];
+const ALLOWED_EXTENSIONS = ['html', 'css', 'js', 'txt', 'json''code','image'];
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/x-icon'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB for files
 const MAX_IMAGE_SIZE = 16 * 1024 * 1024; // 16MB for images (ImgBB limit)
