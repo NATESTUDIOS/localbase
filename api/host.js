@@ -7,9 +7,9 @@ const ALLOWED_EXTENSIONS = ['html', 'css', 'js', 'txt', 'json'];
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/x-icon'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB for files
 const MAX_IMAGE_SIZE = 16 * 1024 * 1024; // 16MB for images (ImgBB limit)
-const DB_PATH = 'HostedFiles';
-const IMAGE_DB_PATH = 'HostedImages';
-const ANALYTICS_PATH = 'Analytics';
+const DB_PATH = 'Dev-HostedFiles';
+const IMAGE_DB_PATH = 'Dev-HostedImages';
+const ANALYTICS_PATH = 'Dev-Analytics';
 
 // ImgBB Configuration
 const IMGBB_API_KEY = process.env.IMGBB_API_KEY;
