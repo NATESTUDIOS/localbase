@@ -139,6 +139,54 @@ async function checkRateLimit(ip, action) {
 }
 
 // ============================================
+// User Response Formatter - FLATTENED
+// ============================================
+function formatUserForResponse(userData, userId = null) {
+  // Handle both nested and flat structures
+  const isNested = userData.profile !== undefined || userData.metadata !== undefined;
+  
+  const formatted = {
+    id: userId || userData.id || userData.username,
+    username: userData.username || '',
+    email: userData.email || '',
+    displayName: '',
+    bio: '',
+    avatar: null,
+    ip: '',
+    device_id: '',
+    device_hash: '',
+    created_with: 'web',
+    created_at: userData.created_at || null,
+    updated_at: userData.updated_at || null,
+    last_login: userData.last_login || null,
+    email_verified: userData.email_verified || false,
+    is_active: userData.is_active !== false
+  };
+
+  if (isNested) {
+    // Nested structure
+    formatted.displayName = userData.profile?.displayName || userData.username || '';
+    formatted.bio = userData.profile?.bio || '';
+    formatted.avatar = userData.profile?.avatar || null;
+    formatted.ip = userData.metadata?.ip || '';
+    formatted.device_id = userData.metadata?.device_id || '';
+    formatted.device_hash = userData.metadata?.device_hash || '';
+    formatted.created_with = userData.metadata?.created_with || 'web';
+  } else {
+    // Flat structure
+    formatted.displayName = userData.displayName || userData.username || '';
+    formatted.bio = userData.bio || '';
+    formatted.avatar = userData.avatar || null;
+    formatted.ip = userData.ip || '';
+    formatted.device_id = userData.device_id || '';
+    formatted.device_hash = userData.device_hash || '';
+    formatted.created_with = userData.created_with || 'web';
+  }
+
+  return formatted;
+}
+
+// ============================================
 // Main API Handler
 // ============================================
 
@@ -152,13 +200,11 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // ✅ FIXED: Safe extraction with optional chaining
   const body = getBody(req);
   const action = req.query.action || body.action || null;
   const clientIP = getClientIP(req);
   const deviceId = body.device_id || req.query.device_id || req.headers['x-device-id'];
 
-  // ✅ FIXED: Validate action exists for methods that need it
   if (!action && ['POST', 'PUT', 'DELETE'].includes(req.method)) {
     return res.status(400).json({
       success: false,
@@ -186,7 +232,6 @@ export default async function handler(req, res) {
     if (req.method === 'POST' && action === 'register') {
       const { email, password, username } = body;
 
-      // Validate input
       if (!email || !password || !username) {
         return res.status(400).json({ 
           success: false,
@@ -215,7 +260,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Check rate limit
       const rateLimitOK = await checkRateLimit(clientIP, 'register');
       if (!rateLimitOK) {
         return res.status(429).json({ 
@@ -224,7 +268,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Check if email already exists
       const usersRef = db.ref(USERS_PATH);
       const emailSnapshot = await usersRef.orderByChild('email').equalTo(email.toLowerCase()).once('value');
       
@@ -238,7 +281,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Check if username already exists
       const usernameSnapshot = await usersRef.orderByChild('username').equalTo(username).once('value');
       
       let usernameExists = false;
@@ -251,7 +293,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Check device limit (one account per device)
       const deviceHash = generateDeviceFingerprint(deviceId);
       const deviceRef = db.ref(`${DEVICES_PATH}/${deviceHash}`);
       const deviceSnapshot = await deviceRef.once('value');
@@ -266,7 +307,6 @@ export default async function handler(req, res) {
         }
       }
 
-      // Check IP limit
       const ipRef = db.ref(`${DEVICES_PATH}/by_ip/${clientIP.replace(/\./g, '_')}`);
       const ipSnapshot = await ipRef.once('value');
       
@@ -280,11 +320,11 @@ export default async function handler(req, res) {
         }
       }
 
-      // Create user
-      const userId = username; // Use username as the ID
+      const userId = username;
       const hashedPassword = hashPassword(password);
       const now = Date.now();
 
+      // Store with nested structure in Firebase
       const userData = {
         id: userId,
         username: username,
@@ -308,11 +348,9 @@ export default async function handler(req, res) {
         }
       };
 
-      // Save user
       const userRef = db.ref(`${USERS_PATH}/${userId}`);
       await userRef.set(userData);
 
-      // Register device
       const deviceData = {
         device_hash: deviceHash,
         device_id: deviceId || 'unknown',
@@ -323,7 +361,6 @@ export default async function handler(req, res) {
       };
       await deviceRef.set(deviceData);
 
-      // Register IP
       const ipData = {
         user_ids: [userId],
         first_seen: now,
@@ -331,7 +368,6 @@ export default async function handler(req, res) {
       };
       await ipRef.set(ipData);
 
-      // Create session
       const sessionId = generateSessionId();
       const sessionData = {
         user_id: userId,
@@ -345,16 +381,15 @@ export default async function handler(req, res) {
       const sessionRef = db.ref(`${SESSIONS_PATH}/${sessionId}`);
       await sessionRef.set(sessionData);
 
-      // Generate token
       const token = generateToken(userId, sessionId);
 
-      // Remove password from response
-      const { password: _, ...userWithoutPassword } = userData;
+      // Format response - FLATTENED
+      const userResponse = formatUserForResponse(userData, userId);
 
       return res.status(201).json({
         success: true,
         message: 'Account created successfully',
-        user: userWithoutPassword,
+        user: userResponse,
         token: token,
         session_id: sessionId
       });
@@ -373,7 +408,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Check rate limit
       const rateLimitOK = await checkRateLimit(clientIP, 'login');
       if (!rateLimitOK) {
         return res.status(429).json({ 
@@ -382,7 +416,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Find user by email
       const usersRef = db.ref(USERS_PATH);
       const snapshot = await usersRef.orderByChild('email').equalTo(email.toLowerCase()).once('value');
       
@@ -407,7 +440,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Verify password
       if (!verifyPassword(password, userData.password)) {
         return res.status(401).json({ 
           success: false,
@@ -418,7 +450,6 @@ export default async function handler(req, res) {
       const now = Date.now();
       const deviceHash = generateDeviceFingerprint(deviceId);
 
-      // Check/Update device
       const deviceRef = db.ref(`${DEVICES_PATH}/${deviceHash}`);
       const deviceSnapshot = await deviceRef.once('value');
       
@@ -431,7 +462,6 @@ export default async function handler(req, res) {
               error: 'This device has reached the maximum number of accounts' 
             });
           }
-          // Add this user to device
           deviceData.user_ids.push(userId);
           await deviceRef.update({
             user_ids: deviceData.user_ids,
@@ -439,7 +469,6 @@ export default async function handler(req, res) {
           });
         }
       } else {
-        // Register new device
         await deviceRef.set({
           device_hash: deviceHash,
           device_id: deviceId || 'unknown',
@@ -450,7 +479,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Update IP tracking
       const ipRef = db.ref(`${DEVICES_PATH}/by_ip/${clientIP.replace(/\./g, '_')}`);
       const ipSnapshot = await ipRef.once('value');
       
@@ -471,7 +499,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Create session
       const sessionId = generateSessionId();
       const sessionData = {
         user_id: userId,
@@ -485,23 +512,25 @@ export default async function handler(req, res) {
       const sessionRef = db.ref(`${SESSIONS_PATH}/${sessionId}`);
       await sessionRef.set(sessionData);
 
-      // Update last login
       const userRef = db.ref(`${USERS_PATH}/${userId}`);
       await userRef.update({
         last_login: now,
         updated_at: now
       });
 
-      // Generate token
       const token = generateToken(userId, sessionId);
 
-      // Remove password from response
-      const { password: _, ...userWithoutPassword } = userData;
+      // Get updated user data
+      const updatedSnapshot = await userRef.once('value');
+      const updatedUserData = updatedSnapshot.val();
+
+      // Format response - FLATTENED
+      const userResponse = formatUserForResponse(updatedUserData, userId);
 
       return res.status(200).json({
         success: true,
         message: 'Login successful',
-        user: userWithoutPassword,
+        user: userResponse,
         token: token,
         session_id: sessionId
       });
@@ -532,7 +561,6 @@ export default async function handler(req, res) {
 
       const { userId, sessionId } = decoded;
 
-      // Check session exists
       const sessionRef = db.ref(`${SESSIONS_PATH}/${sessionId}`);
       const sessionSnapshot = await sessionRef.once('value');
       
@@ -551,7 +579,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Check session expiry
       if (sessionData.expires_at < Date.now()) {
         await sessionRef.remove();
         return res.status(401).json({ 
@@ -560,7 +587,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Get user data
       const userRef = db.ref(`${USERS_PATH}/${userId}`);
       const userSnapshot = await userRef.once('value');
       
@@ -572,11 +598,13 @@ export default async function handler(req, res) {
       }
 
       const userData = userSnapshot.val();
-      const { password: _, ...userWithoutPassword } = userData;
+
+      // Format response - FLATTENED
+      const userResponse = formatUserForResponse(userData, userId);
 
       return res.status(200).json({
         success: true,
-        user: userWithoutPassword,
+        user: userResponse,
         session_id: sessionId
       });
     }
@@ -604,7 +632,6 @@ export default async function handler(req, res) {
 
       const { sessionId } = decoded;
 
-      // Delete session
       const sessionRef = db.ref(`${SESSIONS_PATH}/${sessionId}`);
       await sessionRef.remove();
 
@@ -652,7 +679,6 @@ export default async function handler(req, res) {
 
       const { userId } = decoded;
 
-      // Get user
       const userRef = db.ref(`${USERS_PATH}/${userId}`);
       const userSnapshot = await userRef.once('value');
       
@@ -665,7 +691,6 @@ export default async function handler(req, res) {
 
       const userData = userSnapshot.val();
 
-      // Verify current password
       if (!verifyPassword(current_password, userData.password)) {
         return res.status(401).json({ 
           success: false,
@@ -673,7 +698,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Update password
       const hashedPassword = hashPassword(new_password);
       await userRef.update({
         password: hashedPassword,
@@ -709,7 +733,6 @@ export default async function handler(req, res) {
 
       const { userId } = decoded;
 
-      // Get user
       const userRef = db.ref(`${USERS_PATH}/${userId}`);
       const userSnapshot = await userRef.once('value');
       
@@ -721,11 +744,13 @@ export default async function handler(req, res) {
       }
 
       const userData = userSnapshot.val();
-      const { password: _, ...userWithoutPassword } = userData;
+
+      // Format response - FLATTENED
+      const userResponse = formatUserForResponse(userData, userId);
 
       return res.status(200).json({
         success: true,
-        user: userWithoutPassword
+        user: userResponse
       });
     }
 
@@ -753,7 +778,6 @@ export default async function handler(req, res) {
 
       const { userId } = decoded;
 
-      // Get user
       const userRef = db.ref(`${USERS_PATH}/${userId}`);
       const userSnapshot = await userRef.once('value');
       
@@ -764,7 +788,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Update profile
       const updates = {
         updated_at: Date.now()
       };
@@ -781,15 +804,16 @@ export default async function handler(req, res) {
 
       await userRef.update(updates);
 
-      // Get updated user data
       const updatedSnapshot = await userRef.once('value');
       const userData = updatedSnapshot.val();
-      const { password: _, ...userWithoutPassword } = userData;
+
+      // Format response - FLATTENED
+      const userResponse = formatUserForResponse(userData, userId);
 
       return res.status(200).json({
         success: true,
         message: 'Profile updated successfully',
-        user: userWithoutPassword
+        user: userResponse
       });
     }
 
@@ -816,7 +840,6 @@ export default async function handler(req, res) {
 
       const { userId, sessionId } = decoded;
 
-      // Get user data
       const userRef = db.ref(`${USERS_PATH}/${userId}`);
       const userSnapshot = await userRef.once('value');
       
@@ -829,13 +852,9 @@ export default async function handler(req, res) {
 
       const userData = userSnapshot.val();
 
-      // Delete user
       await userRef.remove();
-
-      // Delete session
       await db.ref(`${SESSIONS_PATH}/${sessionId}`).remove();
 
-      // Remove from device
       const deviceHash = generateDeviceFingerprint(userData.metadata?.device_id);
       const deviceRef = db.ref(`${DEVICES_PATH}/${deviceHash}`);
       const deviceSnapshot = await deviceRef.once('value');
@@ -850,7 +869,6 @@ export default async function handler(req, res) {
         }
       }
 
-      // Remove from IP
       const ipRef = db.ref(`${DEVICES_PATH}/by_ip/${(userData.metadata?.ip || 'unknown').replace(/\./g, '_')}`);
       const ipSnapshot = await ipRef.once('value');
       
@@ -959,7 +977,6 @@ export default async function handler(req, res) {
 
       const { userId, sessionId } = decoded;
 
-      // Get all sessions for user
       const sessionsRef = db.ref(SESSIONS_PATH);
       const snapshot = await sessionsRef.orderByChild('user_id').equalTo(userId).once('value');
       
@@ -1010,7 +1027,6 @@ export default async function handler(req, res) {
 
       const { userId } = decoded;
 
-      // Verify session belongs to user
       const sessionRef = db.ref(`${SESSIONS_PATH}/${session_id}`);
       const sessionSnapshot = await sessionRef.once('value');
       
@@ -1029,7 +1045,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Can't revoke current session
       if (session_id === decoded.sessionId) {
         return res.status(400).json({ 
           success: false,
