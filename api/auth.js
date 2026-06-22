@@ -4,9 +4,9 @@ import crypto from 'crypto';
 // ============================================
 // Configuration
 // ============================================
-const USERS_PATH = 'Users';
-const SESSIONS_PATH = 'Sessions';
-const DEVICES_PATH = 'Devices';
+const USERS_PATH = 'Dev-Users';
+const SESSIONS_PATH = 'Dev-Sessions';
+const DEVICES_PATH = 'Dev-Devices';
 const IP_ACCOUNT_LIMIT = 3; // Max accounts per IP
 const DEVICE_ACCOUNT_LIMIT = 1; // Max accounts per device
 const SESSION_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -139,7 +139,7 @@ async function checkRateLimit(ip, action) {
 }
 
 // ============================================
-// User Response Formatter - FLATTENED
+// User Response Formatter - FLATTENED AT ROOT
 // ============================================
 function formatUserForResponse(userData, userId = null) {
   // Handle both nested and flat structures
@@ -383,13 +383,12 @@ export default async function handler(req, res) {
 
       const token = generateToken(userId, sessionId);
 
-      // Format response - FLATTENED
+      // Format response - FLATTENED AT ROOT
       const userResponse = formatUserForResponse(userData, userId);
 
       return res.status(201).json({
         success: true,
-        message: 'Account created successfully',
-        user: userResponse,
+        ...userResponse,
         token: token,
         session_id: sessionId
       });
@@ -524,13 +523,12 @@ export default async function handler(req, res) {
       const updatedSnapshot = await userRef.once('value');
       const updatedUserData = updatedSnapshot.val();
 
-      // Format response - FLATTENED
+      // Format response - FLATTENED AT ROOT
       const userResponse = formatUserForResponse(updatedUserData, userId);
 
       return res.status(200).json({
         success: true,
-        message: 'Login successful',
-        user: userResponse,
+        ...userResponse,
         token: token,
         session_id: sessionId
       });
@@ -599,12 +597,12 @@ export default async function handler(req, res) {
 
       const userData = userSnapshot.val();
 
-      // Format response - FLATTENED
+      // Format response - FLATTENED AT ROOT
       const userResponse = formatUserForResponse(userData, userId);
 
       return res.status(200).json({
         success: true,
-        user: userResponse,
+        ...userResponse,
         session_id: sessionId
       });
     }
@@ -745,12 +743,12 @@ export default async function handler(req, res) {
 
       const userData = userSnapshot.val();
 
-      // Format response - FLATTENED
+      // Format response - FLATTENED AT ROOT
       const userResponse = formatUserForResponse(userData, userId);
 
       return res.status(200).json({
         success: true,
-        user: userResponse
+        ...userResponse
       });
     }
 
@@ -807,13 +805,13 @@ export default async function handler(req, res) {
       const updatedSnapshot = await userRef.once('value');
       const userData = updatedSnapshot.val();
 
-      // Format response - FLATTENED
+      // Format response - FLATTENED AT ROOT
       const userResponse = formatUserForResponse(userData, userId);
 
       return res.status(200).json({
         success: true,
         message: 'Profile updated successfully',
-        user: userResponse
+        ...userResponse
       });
     }
 
